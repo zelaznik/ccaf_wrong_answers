@@ -1,0 +1,29 @@
+Question 16
+Incorrect
+SCENARIO: You are building a structured data extraction system using Claude. The system extracts information from unstructured documents, validates the output using JavaScript Object Notation (JSON) schemas, and maintains high accuracy. It must handle edge cases gracefully and integrate with downstream systems.
+
+QUESTION: A team keeps JSON-schema validation conventions for extraction parsers that sit in many directories. They want the conventions applied automatically when parser files are edited, without loading them into every session. Which two configuration decisions should they make?
+
+Correct selection
+Create a rule file in .claude/rules/ with a paths glob in its YAML frontmatter that matches the parser files wherever they live.
+Explanation
+This is correct. Path-scoped rules are file-match-oriented: the glob pattern in the paths frontmatter determines activation, so a convention applies to matching files scattered across any number of directories while staying out of unrelated sessions.
+Your selection is correct
+Declare an explicit paths field in the rule's frontmatter, since a rule file without one loads unconditionally at session start.
+Explanation
+This is correct. Merely placing a file in .claude/rules/ does not make it conditional; without a paths field the rule loads at launch with the same standing as .claude/CLAUDE.md content. Path scoping comes from the frontmatter, not the directory location.
+Duplicate a directory-level CLAUDE.md into every directory that contains parser code so the conventions load wherever parsers live.
+Explanation
+This is incorrect. Copying the same content into many directory-level CLAUDE.md files creates a maintenance burden and guarantees drift as copies diverge; a single path-scoped rule in .claude/rules/ covers all matching files from one place.
+Consolidate the conventions into the root project CLAUDE.md so they are guaranteed to be present in every session.
+Explanation
+This is incorrect. Root CLAUDE.md content loads in every session regardless of task, which is exactly the always-on context cost the team wants to avoid; the conventions would consume tokens even when no parser file is being touched.
+Overall explanation
+The .claude/rules/ directory exists to break a monolithic CLAUDE.md into focused topic files, and its distinguishing capability is path scoping: a rule file may carry YAML frontmatter with a paths field containing glob patterns such as **/*.test.ts or src/**/*.{ts,tsx}. A rule with such a field becomes relevant when Claude works with a file matching the pattern, which makes it the right home for conventions that apply to a kind of file (parsers, schemas, tests) rather than a place in the tree. That is the tradeoff the mechanism makes: instead of paying context cost for every convention in every session, matching-by-pattern loads instructions only where they earn their tokens.
+
+Two mistakes are easy to make. First, location alone confers nothing: a file in .claude/rules/ without a paths field loads unconditionally at launch, exactly like content in the project's .claude/CLAUDE.md, so an engineer who forgets the frontmatter has simply split their always-on context into more files. Second, the plausible alternatives both fail the stated goals: duplicating directory-level CLAUDE.md files across every parser folder scatters one convention into many copies that must be kept in sync by hand, while consolidating everything into the root CLAUDE.md loads the conventions into every session whether or not a parser file is involved. When one convention must govern scattered files, the centralized path-scoped rule is the fit; when a directory owner maintains purely local conventions, the directory-level CLAUDE.md is.
+
+See Manage Claude's memory and Working with large codebases for the documented loading behavior and guidance on choosing between the two mechanisms.
+
+Domain
+Claude Code Configuration & Workflows
