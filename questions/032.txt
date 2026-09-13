@@ -1,0 +1,29 @@
+Question 7
+Incorrect
+SCENARIO: You are building a customer support resolution agent using the Claude Agent SDK. The agent handles high-ambiguity requests like returns, billing disputes, and account issues. It has access to your backend systems through custom Model Context Protocol (MCP) tools (get_customer, lookup_order, process_refund, escalate_to_human). Your target is 80%+ first-contact resolution while knowing when to escalate.
+
+QUESTION: The agent escalates "data inconsistency" cases whenever the store credit figure in its case facts block differs from a fresh get_customer result after a mid-session refund posts. Which change prevents this misinterpretation?
+
+Correct answer
+Record a capture timestamp alongside each fact in the case facts block so a later value is read as superseding the earlier one.
+Explanation
+This is correct because the two figures are not in conflict; they are snapshots of the same account taken before and after a state change. Attaching collection timestamps to structured facts lets the agent interpret the difference chronologically, recognizing that the refund updated the balance rather than exposing contradictory data.
+Instruct the agent in the system prompt to always adopt whichever amount appeared later in the conversation when two figures disagree.
+Explanation
+A blanket recency rule is a heuristic, not an interpretation mechanism. Once history is summarized, conversational position becomes unreliable, and blindly preferring the later mention would also silently override genuine data conflicts that actually warrant investigation or escalation.
+Your answer is incorrect
+Route every detected value discrepancy to escalate_to_human, since disagreeing financial figures suggest backend integrity issues.
+Explanation
+Escalating every discrepancy treats a normal state transition as a fault, which would flood human agents with routine cases and undermine the first-contact resolution target. The discrepancy here is expected behavior after a refund, not a backend integrity problem.
+Store only one value per field in the case facts block, overwriting on each update so conflicting entries never coexist.
+Explanation
+Silent overwriting hides the temporal dimension instead of representing it. The agent loses the record of what the balance was before the refund, which it needs to explain the change to the customer and to audit the actions taken during the session.
+Overall explanation
+Two different values for the same field are only a contradiction if they describe the same moment in time. When a refund posts mid-session, the store credit balance legitimately changes, so a fact captured earlier and a fresh tool result will disagree by design. The failure here is not in the backend data but in how the agent's context represents it: a bare number in the case facts block carries no indication of when it was true, so the agent has no way to distinguish a state change from a conflict.
+
+The fix is to make time a first-class part of structured outputs. Recording a capture timestamp with each fact lets the agent reason chronologically: the newer snapshot supersedes the older one, and the older value remains available as an audit trail (useful when the customer references the pre-refund amount). This is the same principle that governs multi-source research synthesis, where publication and collection dates prevent temporal differences from being misread as contradictory claims; here it is applied to within-session tool data.
+
+The alternatives each fail in a characteristic way. A prompt rule to prefer the value mentioned later relies on conversational ordering, which degrades under summarization and would also mask genuine conflicts that deserve attention. Overwriting fields so only one value exists suppresses the discrepancy rather than interpreting it, destroying the history the agent needs to explain the change. Escalating every discrepancy converts routine, expected transitions into human workload, directly working against a high first-contact resolution target. Sound context engineering means structuring what enters the window so the model can reason correctly, not stripping or ordering away the information it needs; see Effective context engineering for AI agents and Context windows.
+
+Domain
+Context Management & Reliability
