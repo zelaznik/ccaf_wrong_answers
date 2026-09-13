@@ -1,0 +1,29 @@
+Question 17
+Incorrect
+SCENARIO: You are using Claude Code to accelerate software development. Your team uses it for code generation, refactoring, debugging, and documentation. You need to integrate it into your development workflow with custom slash commands, CLAUDE.md configurations, and understand when to use plan mode vs direct execution.
+
+QUESTION: This team's re-review job already includes prior findings in context and asks Claude to report only new or unresolved issues. Developers have dismissed several findings as accepted risks, yet every re-run re-flags those items as unaddressed. What should change?
+
+Exclude the files that contain previously dismissed findings from the diff supplied to subsequent re-review runs.
+Explanation
+This is incorrect because removing whole files from the review scope creates blind spots. New commits can introduce genuine issues in those same files, and the reviewer would never see them.
+Raise the reviewer's minimum severity threshold for reporting so that accepted-risk findings fall below the reporting bar.
+Explanation
+This is incorrect because severity is orthogonal to acceptance. Dismissed findings can be high severity issues the team consciously accepted, so they would still clear a raised threshold, while legitimate new findings of lower severity would be suppressed.
+Correct answer
+Add each prior finding's disposition, including dismissals, to the context and instruct Claude to treat dismissed items as resolved.
+Explanation
+This is correct because the reviewer can only distinguish an unresolved finding from a dismissed one if the dismissal decision is part of its context. Findings supplied without their disposition, such as an accepted-risk dismissal, all look unaddressed, so carrying resolution status alongside the findings lets the delta instruction work as intended.
+Your answer is incorrect
+Post-process the reviewer's output in the pipeline and suppress any finding whose text matches a previously dismissed review comment.
+Explanation
+This is incorrect because text matching is brittle: the model phrases the same finding differently across runs, so suppression misses re-worded duplicates. It also cannot tell a re-detected dismissed issue apart from a genuinely new instance of the same problem elsewhere, hiding real findings.
+Overall explanation
+Re-review quality in a CI pipeline is fundamentally a context design problem: the model has no memory between runs, so its behavior on each invocation is determined entirely by what the pipeline places in its context. Passing the prior findings tells the reviewer what has already been raised, but a finding without its disposition is indistinguishable from an open one. If a developer marked an item as accepted risk, that decision must travel into the next run's context along with the finding itself, paired with an explicit instruction to treat dismissed items as resolved. The reviewer then reports only genuinely new issues and carryovers the team has not yet addressed or dismissed.
+
+The distractors fail for instructive reasons. Suppressing output in the pipeline by matching finding text is mechanical deduplication applied to generative output: the model rewords the same observation across runs, so matches are unreliable, and the filter cannot distinguish a re-detection of a dismissed issue from a new occurrence of the same defect class in different code. Excluding files from the diff trades duplicate noise for coverage gaps, since later commits can introduce real problems in exactly those files. Raising the minimum severity for reporting conflates how serious an issue is with whether the team has chosen to accept it; the two are independent dimensions, so a stricter bar still re-flags high severity items the team deliberately accepted while silencing legitimate new findings of lower severity.
+
+The general principle is that anything the reviewer must reason about, including prior findings, their resolutions, and team decisions, has to be supplied as input on every run rather than reconstructed by pipeline heuristics after the fact. See Claude Code GitHub Actions and Run Claude Code programmatically for guidance on driving Claude Code in automated pipelines.
+
+Domain
+Claude Code Configuration & Workflows
