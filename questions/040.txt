@@ -1,0 +1,29 @@
+Question 44
+Incorrect
+SCENARIO: You are building a customer support resolution agent using the Claude Agent SDK. The agent handles high-ambiguity requests like returns, billing disputes, and account issues. It has access to your backend systems through custom Model Context Protocol (MCP) tools (get_customer, lookup_order, process_refund, escalate_to_human). Your target is 80%+ first-contact resolution while knowing when to escalate.
+
+QUESTION: During sessions where a customer raises several issues, the agent sometimes applies one issue's refund amount to a different issue's order once earlier turns have been summarized. How should per-issue transactional data be maintained?
+
+Correct answer
+Keep each issue's order ID, amount, and status in a structured facts block outside the summarized history, updated as issues progress.
+Explanation
+This is the documented pattern for preserving precise transactional data across long sessions. A structured block included in every prompt is never subject to summarization, so amounts and order IDs stay bound to the correct issue no matter how many turns are compressed.
+Re-invoke lookup_order for every referenced order at the start of each turn so amounts always come from the backend, never from history.
+Explanation
+Refetching restores raw backend fields but re-injects verbose multi-field results into context each turn, adding loops and bloat. It also cannot recover conversation-level facts such as which amount was agreed for which issue or what the customer stated, which is exactly the binding that was lost.
+Your answer is incorrect
+Rewrite the summarization prompt to instruct that every order ID, dollar amount, and issue status be preserved verbatim in each summary.
+Explanation
+Summarization is inherently lossy and probabilistic; instructing the summarizer to keep every figure verbatim reduces but does not eliminate omissions, and repeated summarization passes compound the loss. Critical facts should live outside the summarized history, not depend on summary quality.
+Raise the token threshold that triggers summarization so more complete turns remain in context before any compression occurs.
+Explanation
+Raising the threshold only delays the point at which summarization erodes precise details; multi-issue sessions will still eventually cross it. The failure mode remains intact, just postponed to longer sessions.
+Overall explanation
+The root cause here is the progressive summarization trap: when older turns are condensed, precise transactional values (order IDs, dollar amounts, statuses) are the first details to blur into vague phrasing, and the association between a specific amount and a specific issue is lost. In a multi-issue session that association is the whole game, because the same customer has several concurrent orders and figures in play.
+
+The reliable design is a persistent case facts block: a structured record per issue (order ID, amount, status, agreed resolution) that lives in a separate context layer, is updated whenever a new fact emerges, and is included in every prompt regardless of how the conversation history is compressed. Because this block is never summarized, precision survives arbitrarily long sessions. Anthropic's memory tool is the documented mechanism for persisting exactly this kind of state outside the active context window, with the application controlling the backing store, and structured outputs can produce the schema-validated per-issue records that populate such a block.
+
+The alternatives all attack symptoms. Hardening the summarization prompt keeps critical data on the lossy path; even a well-instructed summarizer occasionally drops or misattributes a figure, and each summarization pass compounds the risk. Refetching orders every turn restores backend truth but floods context with verbose multi-field results and still cannot reconstruct conversational facts, such as which refund figure the customer accepted for which issue. Raising the summarization threshold merely moves the cliff; the mental model to adopt is that anything that must stay exact should never depend on summarization surviving it.
+
+Domain
+Context Management & Reliability
