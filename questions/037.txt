@@ -1,0 +1,29 @@
+Question 28
+Incorrect
+SCENARIO: You are building a customer support resolution agent using the Claude Agent SDK. The agent handles high-ambiguity requests like returns, billing disputes, and account issues. It has access to your backend systems through custom Model Context Protocol (MCP) tools (get_customer, lookup_order, process_refund, escalate_to_human). Your target is 80%+ first-contact resolution while knowing when to escalate.
+
+QUESTION: An engineer proposes routing the support agent's entire multi-turn, tool-driven resolution loop through the Message Batches API for a latency-tolerant email ticket queue, accepting slower replies in exchange for the 50% discount. What should you recommend?
+
+Your answer is incorrect
+Adopt batches but attach ticket sequence metadata to every request, since results returned out of order cannot otherwise be reassembled.
+Explanation
+Ordering is already a solved correlation problem: each batch request carries a custom_id that maps every result back to its source. Adding sequence metadata does nothing about the real barrier, which is that tool results cannot be fed back mid-request for continued turns.
+Strip the MCP tool definitions from each batch request, since the Message Batches API rejects any request that declares tools.
+Explanation
+Batch requests accept the same core Messages API parameters, including tool definitions, so there is nothing to strip. The actual gap is that a requested tool cannot be executed during processing and handed back for another turn, and removing the tools would also cripple the agent's ability to resolve tickets.
+Correct answer
+Keep the resolution loop on synchronous calls, since each batch request yields one response and cannot return tool results for continued turns.
+Explanation
+This is correct. The Message Batches API processes each request as a single fire-and-forget Messages call, with no mechanism to intercept a tool_use response, execute the MCP tool, and return the result so the model can continue. The agent's resolution flow depends on multiple tool request and response rounds, so it must stay on the synchronous API regardless of how latency-tolerant the queue is.
+Adopt the proposal unchanged, since the email queue's tolerance for slow replies satisfies the only requirement batch processing imposes.
+Explanation
+Latency tolerance is necessary but not sufficient for batch adoption. Each unit of work must also fit within a single request-response exchange, and the agent's tool-driven loop does not; adopting the proposal would leave every conversation stalled at its first tool_use response.
+Overall explanation
+The mental model to hold is that a batch request is a single, self-contained Messages API call submitted for asynchronous processing: the request goes in, and one response eventually comes out in a results file. There is no harness in the middle. In a normal agentic loop, your code inspects each response, sees a tool_use stop, executes the MCP tool (such as lookup_order or process_refund), appends the result to the conversation, and calls the model again. The Message Batches API offers no hook for that interception, so a multi-turn tool-calling workflow cannot complete within one batch request. This limitation is orthogonal to latency: even a queue that could happily wait a full day still cannot run the loop, which is why the sound recommendation keeps the loop synchronous.
+
+This is why the batch-versus-synchronous decision has two independent gates. First, is the workload non-blocking and latency-tolerant (batches usually finish in under an hour but can take up to 24 hours with no SLA)? Second, does each unit of work fit in a single request-response exchange? Nightly audits and bulk extractions pass both gates; an interactive tool-driven resolution flow fails the second one no matter how patient the customer is.
+
+The distractors reflect common half-knowledge. Tool definitions are perfectly valid in batch request parameters; it is mid-request tool execution that has no place to happen. And while results are returned out of input order, the required custom_id field exists precisely to correlate each result back to its originating request, so ordering never blocks batch use. See the Message Batches documentation for the asynchronous processing model, latency characteristics, and result correlation.
+
+Domain
+Prompt Engineering & Structured Output
