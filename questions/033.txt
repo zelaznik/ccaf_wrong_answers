@@ -1,0 +1,29 @@
+Question 11
+Incorrect
+SCENARIO: You are building a multi-agent research system using the Claude Agent SDK. A coordinator agent delegates to specialized subagents: one searches the web, one analyzes documents, one synthesizes findings, and one generates reports. The system researches topics and produces comprehensive, cited reports.
+
+QUESTION: In pilot runs, subagents keep surfacing significant angles the coordinator's upfront topic decomposition never anticipated, such as a pending regulation, and those angles are never researched. Which change fixes this?
+
+Give each subagent a broader mandate to independently pursue any related angle it encounters during its own assigned task.
+Explanation
+Uncoordinated scope expansion causes duplicated effort and inconsistent coverage, and a discovery made by one subagent still cannot trigger investigation by a differently specialized agent. Subagents have isolated context, so cross-cutting follow-up must flow through the coordinator.
+Instruct the synthesis subagent to fill in unanticipated angles from its own general knowledge when composing the final report.
+Explanation
+Padding the report with uninvestigated general knowledge undermines the system's stated purpose of producing cited, researched findings. The gap is in investigation coverage, and only new research subtasks can close it with sourced material.
+Correct answer
+Have the coordinator evaluate intermediate findings between delegation rounds and generate new subtasks targeting what those findings reveal.
+Explanation
+This is adaptive decomposition: the plan updates as evidence arrives, so discoveries made mid-research become new investigation subtasks. The coordinator retains ownership of the plan while the plan itself evolves, which is exactly what open-ended research requires.
+Your answer is incorrect
+Expand the initial decomposition prompt with a much longer checklist of candidate subtopics so unexpected angles are covered before research begins.
+Explanation
+A longer upfront checklist is an arms race against topics that are by definition unanticipated; no fixed list written before research starts can enumerate what only the research will reveal. It also bloats every run with subtasks that are irrelevant to most topics.
+Overall explanation
+Open-ended research is the canonical case for dynamic adaptive decomposition: the full scope of an unfamiliar topic is unknowable before investigation starts, so the plan must be allowed to change as evidence arrives. The mental model is a loop, not a pipeline. The coordinator decomposes what it knows, delegates, then treats the returned findings as input to a fresh planning step: does anything discovered warrant a new subtask? Anthropic documents this pattern as chaining subagents, where each subagent completes its task, returns results, and Claude passes relevant context into the next delegation, letting later subtasks be shaped by earlier discoveries. See Create custom subagents.
+
+The reason the loop must live in the coordinator, rather than in individual workers, is context isolation. Each subagent sees only what its prompt contains and returns only its final summary, so a regulation discovered by the web search agent is invisible to every other agent unless the coordinator routes it into a new delegation. Broadening each worker's mandate cannot substitute for this, and it sacrifices the specialization and non-overlapping coverage that made the decomposition useful in the first place. For orchestration that grows beyond what one conversation can coordinate, Anthropic also documents dynamic workflows, where a script holds the loop and branching so only final answers reach Claude's context.
+
+The remaining options fail on principle rather than execution. A bigger upfront checklist is still a fixed pipeline, appropriate for predictable, template-like work but structurally unable to cover discoveries that only emerge mid-investigation. And having synthesis invent coverage from general knowledge converts a research gap into an uncited claim, which is worse than reporting the gap: for a cited research product, findings must trace back to investigated sources.
+
+Domain
+Agentic Architecture & Orchestration
