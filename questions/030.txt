@@ -1,0 +1,23 @@
+Question 60Incorrect
+
+SCENARIO: You are building a structured data extraction system using Claude. The system extracts information from unstructured documents, validates the output using JavaScript Object Notation (JSON) schemas, and maintains high accuracy. It must handle edge cases gracefully and integrate with downstream systems.
+
+QUESTION: This team stores its extraction JSON schemas and prompt templates in a GitHub repository and has added the anthropics/claude-code-action@v1 workflow in automation mode to review every pull request that modifies a schema. The workflow's permissions block grants contents: read, pull-requests: write, and issues: write. Every run fails at startup with an error indicating the action could not obtain a GitHub App token, before Claude performs any review. The ANTHROPIC_API_KEY secret has been verified as valid. What change should the team make?
+Change contents: read to contents: write in the workflow's permissions block.
+Explanation
+The contents permission controls whether the workflow can push changes to the repository, which a review-only job may not even need. It does not affect the OIDC token exchange the action uses for its default GitHub App authentication, so the startup error would persist.
+Replace the ANTHROPIC_API_KEY secret with a CLAUDE_CODE_OAUTH_TOKEN generated via claude setup-token.
+Explanation
+ANTHROPIC_API_KEY and CLAUDE_CODE_OAUTH_TOKEN are alternative ways to authenticate to Anthropic for model inference, and the API key has already been verified as valid. The failure is in obtaining a GitHub App token for repository operations, which is unrelated to which Anthropic credential is used.
+Correct answer
+Add id-token: write to the workflow's permissions block.
+Explanation
+The action's default GitHub App authentication requires the id-token: write permission, which lets the workflow request an OIDC token that is exchanged for a GitHub App token. Without it, the action fails before Claude starts, which matches the observed startup error.
+Your answer is incorrect
+Add actions: read to the workflow's permissions block.
+Explanation
+The actions: read permission allows Claude to read CI results from other workflow runs, which is useful for richer reviews but has nothing to do with authentication. The run is failing to obtain a GitHub App token, not failing to read workflow data.
+Overall explanation
+<p>GitHub Actions workflows operate under an explicit <b>permissions</b> block, and <code>anthropics/claude-code-action@v1</code> depends on one permission that is easy to overlook: <code>id-token: write</code>. This permission does not grant Claude any repository capability directly; it allows the workflow to mint an <i>OpenID Connect (OIDC) token</i>, which the action exchanges for a short-lived GitHub App token under its default authentication flow. That exchange happens at startup, before any prompt is processed, which is why a missing <code>id-token: write</code> produces an authentication failure before Claude ever begins the review. The design tradeoff is deliberate: OIDC-based exchange avoids storing long-lived GitHub credentials as secrets, at the cost of requiring this extra permission grant.</p><p>A useful mental model is that the action needs two independent identities: an <b>Anthropic identity</b> (via <code>ANTHROPIC_API_KEY</code> or <code>CLAUDE_CODE_OAUTH_TOKEN</code>) to call the model, and a <b>GitHub identity</b> (the Claude GitHub App token, obtained through OIDC) to comment on and interact with the repository. Since the API key is confirmed valid, swapping it for an OAuth token changes nothing; the failure is on the GitHub side. Likewise, <code>actions: read</code> only lets Claude inspect CI results from other runs, and widening <code>contents</code> to <code>write</code> only matters when Claude must push commits; neither participates in the token exchange.</p><p>When wiring Claude Code into CI, treat the permissions block as a minimal but complete grant: include <code>id-token: write</code> for authentication, then add only what the job's behavior requires (<code>pull-requests: write</code> for review comments, <code>contents: write</code> only if Claude commits changes, <code>actions: read</code> if Claude should read CI outcomes). See <a href="https://docs.anthropic.com/en/docs/claude-code/github-actions">Claude Code GitHub Actions</a> for the documented permission requirements and authentication options.</p>
+Domain
+Domain 3: Claude Code Configuration & Workflows

@@ -1,0 +1,23 @@
+Question 21Incorrect
+
+SCENARIO: You are using Claude Code to accelerate software development. Your team uses it for code generation, refactoring, debugging, and documentation. You need to integrate it into your development workflow using custom slash commands and CLAUDE.md configuration, and to know when to use plan mode rather than direct execution.
+
+QUESTION: Your team's repository has a dist/ build output directory listed in .gitignore. Developers report that when Claude Code runs Glob searches like **/*.ts during refactoring sessions, the results include generated files under dist/, yet Grep content searches never surface matches from those same files. The team wants file-name pattern searches to consistently exclude gitignored files, matching the behavior they see from content searches. What should you do?
+Your answer is incorrect
+Add an instruction to the project CLAUDE.md directing Claude to manually exclude gitignored directories whenever it runs Glob searches.
+Explanation
+CLAUDE.md instructions are probabilistic guidance, not a change to how the Glob tool actually filters results. Claude may comply inconsistently, and this approach requires Claude to know and enumerate every ignored path rather than fixing the underlying tool behavior with the documented configuration.
+Replace Glob-based file discovery with Bash commands that pipe find output through filters to skip the ignored directories.
+Explanation
+Falling back to shell commands when a dedicated tool exists is an anti-pattern; Bash should be reserved for tasks the purpose-built tools cannot accomplish. This also forces Claude to reconstruct ignore logic in ad hoc pipelines instead of using the supported environment variable that makes Glob respect .gitignore.
+Make no configuration change, since Glob already respects .gitignore by default and the dist files must have been committed to the repository.
+Explanation
+This misstates the documented default: Glob does not respect .gitignore unless CLAUDE_CODE_GLOB_NO_IGNORE is set to false, while Grep does respect it by default. The dist files appearing in Glob results is expected default behavior, not evidence that they are tracked by git.
+Correct answer
+Set the CLAUDE_CODE_GLOB_NO_IGNORE environment variable to false before launching Claude Code so Glob respects .gitignore.
+Explanation
+Grep respects .gitignore by default, but Glob does not, which explains the discrepancy the team observes. Setting CLAUDE_CODE_GLOB_NO_IGNORE=false before launch is the documented way to make Glob honor .gitignore, aligning file-name searches with content-search behavior deterministically.
+Overall explanation
+<p>The two built-in search tools in Claude Code have asymmetric defaults around ignore files, and that asymmetry is exactly what this team is seeing. <b>Grep</b>, which is built on ripgrep, searches file contents and <i>respects .gitignore by default</i>, so generated files under <code>dist/</code> never appear in its results. <b>Glob</b>, which matches file names and paths against patterns like <code>**/*.ts</code>, does <i>not</i> respect .gitignore by default; it returns any matching file on disk, sorted by modification time and capped at 100 results. Because build output is frequently the most recently modified content in a repository, gitignored artifacts can even crowd out real source files in Glob results.</p><p>The documented lever for changing this is the <code>CLAUDE_CODE_GLOB_NO_IGNORE</code> environment variable: setting it to <code>false</code> before launching Claude Code makes Glob honor .gitignore, bringing file-name discovery into line with content search. This is a deterministic, tool-level fix. By contrast, a CLAUDE.md instruction only asks the model to remember to exclude paths, which it may or may not do on any given search, and rewriting discovery as <code>find</code> pipelines in Bash abandons the dedicated tools (with their built-in result handling and permission behavior) to reimplement ignore logic by hand. The mental model to carry forward: when a tool's behavior is wrong for your workflow, first check whether the tool exposes a documented configuration for that behavior before compensating with prompt instructions or shell workarounds.</p><p>See the <a href="https://code.claude.com/docs/en/tools-reference">Tools reference</a> for the documented defaults and configuration of Grep and Glob.</p>
+Domain
+Domain 2: Tool Design & MCP Integration

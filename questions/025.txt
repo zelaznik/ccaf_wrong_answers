@@ -1,0 +1,23 @@
+Question 26Incorrect
+
+SCENARIO: You are using Claude Code to accelerate software development. Your team uses it for code generation, refactoring, debugging, and documentation. You need to integrate it into your development workflow using custom slash commands and CLAUDE.md configuration, and to know when to use plan mode rather than direct execution.
+
+QUESTION: An engineer on this team writes a PreToolUse hook that uses updatedInput to prepend the team's standard license header to newly generated TypeScript files. They register the hook with the matcher string "src/**/*.ts", intending to intercept only writes under the src directory. Logging shows the callback never executes, even though Claude regularly writes files matching that pattern. What change makes the hook fire as intended?
+Your answer is incorrect
+Register the callback under PostToolUse instead, since file paths are only resolved and available for matching after the tool executes.
+Explanation
+PostToolUse matchers work the same way as PreToolUse matchers, filtering by tool name, so the path-based matcher would still never match. Additionally, PostToolUse fires after the file has already been written, and updatedToolOutput only changes what Claude sees, so the header would never land in the file itself.
+Add an instruction to CLAUDE.md directing Claude to include the license header whenever it writes files under the src directory.
+Explanation
+CLAUDE.md instructions are prompt-based guidance that Claude follows probabilistically, so this does not fix the hook and provides no deterministic guarantee. When the requirement is that every generated file carries the header, code-level interception is the appropriate mechanism, not prompt instructions.
+Anchor the matcher pattern with ^ and $ so the regular expression engine matches the entire file path rather than a substring.
+Explanation
+Anchoring changes how a regex matcher evaluates its input, but the input being matched is the tool name, not the file path. No amount of regex refinement on a path pattern will match tool names like Write or Edit, so the hook would still never fire.
+Correct answer
+Change the matcher to "Write|Edit" and have the callback inspect tool_input.file_path to decide whether the write targets the src directory.
+Explanation
+Hook matchers filter by the event's target, which for tool hooks is the tool name, not file paths or other arguments. The matcher must select the Write and Edit tools, and any path-based filtering must happen inside the callback by inspecting tool_input, which is the documented pattern for path-scoped enforcement.
+Overall explanation
+<p>The mental model to hold is that a hook <b>matcher</b> filters on the event's target, which for tool-related events like <code>PreToolUse</code> and <code>PostToolUse</code> is the <i>tool name</i>. A matcher like <code>Write|Edit</code> matches those exact tool names, <code>*</code> or an empty matcher matches everything, and strings containing other regex characters are evaluated as unanchored regular expressions against the tool name. A file glob such as <code>src/**/*.ts</code> is therefore compared against names like <code>Write</code> and <code>Bash</code>, never against a path, so the callback silently never runs.</p><p>The documented pattern for path-scoped interception is a two-stage filter: the matcher narrows to the relevant tools, and the callback inspects <code>tool_input</code> (here, <code>tool_input.file_path</code>) to decide whether to act. Two related gotchas matter when writing that path check: for Write, Edit, and Read, <code>file_path</code> arrives as an absolute path with tildes and relative paths already expanded, and on Windows the separators are backslashes, so path comparisons should normalize before matching.</p><p>The event choice also matters for this use case. Because the goal is to modify the content <i>before</i> it is written, <code>PreToolUse</code> with <code>updatedInput</code> is the right interception point; remember that <code>updatedInput</code> replaces the entire input object, so the callback must echo back unchanged fields alongside the modified content. <code>PostToolUse</code> runs after the side effect has already occurred, and its <code>updatedToolOutput</code> only reshapes the result Claude observes. Relying on a CLAUDE.md instruction is the classic anti-pattern of using probabilistic prompt guidance where deterministic code-level enforcement is required.</p><p>See <a href="https://code.claude.com/docs/en/agent-sdk/hooks">Agent SDK Hooks</a> and <a href="https://docs.anthropic.com/en/docs/claude-code/hooks">Claude Code Hooks</a> for matcher semantics and the updatedInput contract.</p>
+Domain
+Domain 1: Agentic Architecture & Orchestration

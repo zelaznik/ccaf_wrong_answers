@@ -1,0 +1,23 @@
+Question 50Incorrect
+
+SCENARIO: You are building a multi-agent research system using the Claude Agent SDK. A coordinator agent delegates to specialized subagents: one searches the web, one analyzes documents, one synthesizes findings, and one generates reports. The system researches topics and produces comprehensive, cited reports.
+
+QUESTION: This team keeps the coordinator and subagent source code in a GitHub repository and has configured anthropics/claude-code-action@v1 in automation mode (a prompt input is set) so Claude reviews every pull request that changes agent orchestration logic. Pull requests opened by engineers are reviewed as expected, but pull requests opened by the team's dependency-update bot are rejected before Claude ever starts, so those changes get no review. What should the team change so the bot's pull requests receive automated reviews?
+Switch the workflow to a scheduled trigger, since scheduled events bypass the write-access check.
+Explanation
+Scheduled events do skip the write-access check, but they do not change the documented bot actor handling, and moving to a schedule would stop reviews from running when each pull request is opened. This trades away the per-PR review the team wants without addressing the bot rejection.
+Correct answer
+List the bot account in the action's allowed_bots input so its pull request events can start Claude runs.
+Explanation
+The GitHub Action rejects bot actors before Claude starts unless the bot is explicitly listed in allowed_bots. Adding the dependency-update bot to this input is the documented way to let its pull request events trigger automation-mode runs.
+Grant the bot account write access to the repository so it passes the action's permission gate.
+Explanation
+The write-access requirement applies to the triggering user check, but bot actors are rejected by a distinct gate regardless of their repository permissions. Without an allowed_bots entry, the bot's events would still be rejected before Claude starts.
+Your answer is incorrect
+Add the bot account to allowed_non_write_users and supply a github_token so the action accepts it.
+Explanation
+The allowed_non_write_users input exists to permit human users who lack write access to trigger runs. Bot actors are gated by a separate mechanism and are rejected unless listed in allowed_bots, so this setting would not fix the bot's rejected runs.
+Overall explanation
+<p>The <b>Claude Code GitHub Action</b> gates every run before Claude starts, because in a shared repository the actor who triggers a workflow effectively controls what Claude does and what tokens it consumes. The action applies two distinct gates: for human users on issue and pull request events, the triggering user must have <b>write access</b> unless they are explicitly permitted through <code>allowed_non_write_users</code> (which also requires a supplied <code>github_token</code>); for <b>bot actors</b>, the run is rejected outright unless the bot is named in the <code>allowed_bots</code> input. These are separate mechanisms, and confusing them is the trap here: giving a bot write access or adding it to the human allowlist does not satisfy the bot gate.</p><p>This design reflects a sensible default posture for CI automation: bots like dependency updaters open pull requests at scale, and each one would otherwise launch a Claude run that spends tokens and can push commits. Requiring an explicit opt-in per bot keeps that surface deliberate. Once the dependency-update bot is listed in <code>allowed_bots</code>, its pull request events pass the gate and the automation-mode run (triggered by the <code>prompt</code> input) executes immediately for the event, writing results to the workflow run log.</p><p>Switching to a scheduled trigger is a false shortcut: scheduled events skip the write-access check, but the documented bot and human actor behavior still applies, and the team would lose the per-pull-request review timing that automation mode was configured to provide. See <a href="https://docs.anthropic.com/en/docs/claude-code/github-actions">Claude Code GitHub Actions</a> for the full gating and configuration reference.</p>
+Domain
+Domain 3: Claude Code Configuration & Workflows

@@ -1,0 +1,23 @@
+Question 15Incorrect
+
+SCENARIO: You are using Claude Code to accelerate software development. Your team uses it for code generation, refactoring, debugging, and documentation. You need to integrate it into your development workflow using custom slash commands and CLAUDE.md configuration, and to know when to use plan mode rather than direct execution.
+
+QUESTION: Midway through an accept edits session where an engineer has been rapidly iterating on small code changes, the engineer's next request is different: restructuring the module's caching layer, which has architectural implications and several valid approaches. The engineer wants Claude to propose an approach for review before any files change for this one task, then return to the fast iteration workflow. What is the most efficient way to accomplish this?
+Stay in accept edits mode and instruct Claude in the chat message to describe its plan first and not modify any files until told to proceed.
+Explanation
+Permission modes are changed through the UI, CLI, or settings, not by asking Claude in conversation. In accept edits mode, file edits are auto-approved, so a chat instruction provides only probabilistic compliance rather than a guarantee that no files change before review.
+Correct answer
+Prefix the caching request with /plan so plan mode applies to that prompt, then approve the resulting plan when it looks right.
+Explanation
+The /plan prefix scopes plan mode to a single prompt, so Claude researches and proposes an approach without editing files, and approving the plan exits plan mode so implementation can proceed. This gives enforced review for the risky task with minimal disruption to the rest of the session.
+Your answer is incorrect
+End the current session and restart Claude Code with claude --permission-mode plan to handle the caching work.
+Explanation
+Restarting works but discards the accumulated session context and applies plan mode to the entire new session, which the engineer would then need to exit for subsequent iteration. Plan mode can be entered for a single prompt or toggled in place, making a restart unnecessarily disruptive.
+Set permissions.defaultMode to plan in the project's .claude/settings.json so the review requirement is enforced for this task.
+Explanation
+The defaultMode setting is a persistent configuration that affects future sessions and, when committed, the whole team. It is the wrong lever for a one-off task within an active session, and it does not change the mode of the conversation already in progress in the way a per-prompt or in-session toggle does.
+Overall explanation
+<p>Plan mode is a <b>permission mode</b>, one of the settings that determine what Claude Code may do without asking, rather than something Claude can be talked into honoring. In plan mode, Claude reads files and investigates but does not edit source files until you approve its proposed plan. That property makes it the right tool whenever a task has architectural implications or multiple valid approaches: you get the exploration and a reviewable proposal before anything touches disk.</p><p>Because tasks like this often arise in the middle of an otherwise fast-moving session, Claude Code offers several entry points with different scopes: starting a session with <code>claude --permission-mode plan</code>, cycling modes with <code>Shift+Tab</code>, or prefixing a single prompt with <code>/plan</code>. The per-prompt prefix is the lightest-weight option, and it composes naturally with the approval flow: <i>approving a plan exits plan mode</i>, so once the engineer accepts the proposal, implementation proceeds under the selected permission behavior and the session returns to normal iteration.</p><p>The common trap is treating a chat instruction like "plan first, don't edit anything" as equivalent to plan mode. In accept edits mode, file edits are auto-approved by the permission system, so nothing enforces that request; compliance is probabilistic. The other approaches confuse scope: restarting the session throws away useful context and puts the whole new session in plan mode, while editing <code>permissions.defaultMode</code> in <code>.claude/settings.json</code> is a persistent, potentially team-wide default, not a mechanism for gating one task. Matching the enforcement mechanism's scope to the task's scope is the core judgment here.</p><p>See <a href="https://code.claude.com/docs/en/permission-modes">Permission modes</a> and <a href="https://docs.anthropic.com/en/docs/claude-code/settings">Claude Code settings</a> for details.</p>
+Domain
+Domain 3: Claude Code Configuration & Workflows
