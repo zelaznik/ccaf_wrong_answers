@@ -1,0 +1,29 @@
+Question 29
+Incorrect
+SCENARIO: You are building a structured data extraction system using Claude. The system extracts information from unstructured documents, validates the output using JavaScript Object Notation (JSON) schemas, and maintains high accuracy. It must handle edge cases gracefully and integrate with downstream systems.
+
+QUESTION: The system routes documents it cannot extract confidently to human reviewers, and those reviewers have no access to the model's processing transcript. What should each escalation record contain so a reviewer can resolve the case without redoing the work?
+
+Provide an overall confidence score and an urgency rating, so reviewers can prioritize which escalated documents to handle first.
+Explanation
+Confidence and urgency support triage ordering but convey nothing about what the system found or why it escalated. A reviewer receiving only these values must still rebuild the entire case before resolving it.
+Correct answer
+Include a self-contained record with the document identifier, the fields extracted so far, the detected conflict or ambiguity, and a recommended resolution.
+Explanation
+This is correct because the reviewer lacks the transcript, so the escalation must transfer the full case state on its own. Including the identifier, partial extraction, root cause of the escalation, and a recommendation lets the human resolve the case without repeating the analysis.
+Your answer is incorrect
+Forward the complete raw model output from every extraction pass, so reviewers can inspect all the evidence the system gathered.
+Explanation
+Dumping unprocessed intermediate output transfers noise rather than case state, leaving the reviewer to redo the synthesis the system already performed. A structured summary of findings and the identified conflict is far more actionable than raw transcripts.
+Send only the document identifier and the original source file, so reviewers form an independent judgment without anchoring on the system's prior analysis.
+Explanation
+This discards all completed work in the name of fresh eyes and forces the reviewer to re-extract the document from scratch. The point of escalation is to transfer case state, not to restart the investigation.
+Overall explanation
+Escalation handoffs exist to transfer case state, not just to flag that a problem occurred. When the receiving human has no visibility into the model's session, the escalation record is the only channel through which the completed work survives the handoff. A well-designed record therefore carries four things: an identifier linking back to the source document, the partial results already produced (fields extracted and validated so far), a root cause statement explaining precisely why the system stopped (for example, two conflicting totals in the source, or a required field genuinely absent), and a recommended action the reviewer can accept or override. This is the same structured handoff discipline used when a support agent escalates a billing dispute: the human should never have to start over.
+
+In practice, teams implement this by modeling the escalation itself as a tool or structured output with an explicit JSON schema, so the model is required to populate every field rather than emitting a free-text apology. Anthropic's tool-use guidance emphasizes that a tool's input_schema defines the exact parameters the model must supply, and that a detailed description of when and how to use the tool is the single biggest driver of reliable invocation; see How to implement tool use. Defining fields such as document_id, extracted_fields, escalation_reason, and recommended_resolution makes the handoff machine-checkable and consistent across cases.
+
+The alternatives each fail the self-containment test. Sending only the identifier and source file throws away the extraction work to avoid anchoring, which trades a small bias risk for guaranteed duplicated effort. Forwarding every raw model output transfers volume instead of insight, pushing the synthesis burden onto the human. Confidence and urgency scores are useful routing metadata, but metadata about a case is not the case itself; a reviewer still needs the findings, the conflict, and a proposed next step to act.
+
+Domain
+Agentic Architecture & Orchestration
