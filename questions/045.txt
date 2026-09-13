@@ -1,0 +1,28 @@
+Question 5Incorrect
+
+SCENARIO: You are integrating Claude Code into your Continuous Integration/Continuous Deployment (CI/CD) pipeline. The system runs automated code reviews, generates test cases, and provides feedback on pull requests. You need to design prompts that provide actionable feedback and minimize false positives.
+
+QUESTION: The pipeline's post_review_comment MCP tool fails on pull requests opened from forks because the CI token lacks write access; the tool returns only "Operation failed," and the agent retries until the job times out. What should the tool return instead?
+Correct answer
+A permission-category error, isRetryable: false, and a message stating the CI token cannot write to fork pull requests.
+Explanation
+This is correct because a permission failure is non-retryable by nature: no number of retries will grant the token write access. Categorizing the error and flagging it as non-retryable stops the futile retry loop, and the descriptive message lets the agent surface an actionable explanation, such as reporting the issue in the job output, instead of guessing.
+A transient-category error with isRetryable: true so the agent spaces retries with exponential backoff before giving up.
+Explanation
+This mislabels a permanent access problem as a temporary one. Backoff only helps when a later attempt can succeed; a token that lacks write access will fail every attempt, so this design still wastes pipeline time before ultimately failing.
+A successful result with empty content so the agent stops retrying and proceeds with the rest of the review.
+Explanation
+This is silent error suppression, a documented anti-pattern. The retries stop, but the agent now believes the comment was posted, so review feedback is dropped without anyone knowing and the underlying access problem is never surfaced or fixed.
+Your answer is incorrect
+The git provider's raw HTTP 403 response body in full so that no diagnostic detail is lost in translation.
+Explanation
+Raw provider payloads are not the interface the agent needs; they mix internal detail with the actual signal and give no explicit guidance on retryability. The agent may still misinterpret the failure, and the response can expose internals that do not belong in tool results.
+Overall explanation
+
+The core problem with a uniform Operation failed response is that it collapses several failure modes that demand different recovery behaviors into a single indistinguishable signal. A transient outage should be retried; bad input should be corrected; a permission failure, like a CI token that cannot write to fork pull requests, should never be retried, because the condition will not change between attempts. When the tool hides the category, the agent falls back on guessing, which is exactly what produces retry loops that burn the job's time budget.
+
+Anthropic's guidance is to make tool errors informative and actionable: say what went wrong and what the model should do next, rather than returning a bare failure string. Structured metadata such as an error category and an isRetryable flag turns recovery into a decision the agent can make deterministically from the result itself. For a permission error, isRetryable: false immediately ends the retry loop, and the human-readable message gives the agent something useful to do instead: annotate the pull request run output so a maintainer can fix the token scope. The mental model is that the tool result is the only channel through which the agent perceives the outside world; whatever nuance the tool omits, the agent cannot act on.
+
+The alternatives each break this contract in a different way. Marking the failure transient with backoff just slows down a loop that can never succeed. Returning an empty success suppresses the error entirely, so feedback silently disappears and the misconfiguration goes undetected. Dumping the raw HTTP 403 body preserves detail but delivers it in a form with no explicit retryability signal, leaving interpretation to chance. See Handle tool calls and errors for the documented pattern of returning descriptive, recovery-oriented error content with is_error: true.
+Domain
+Tool Design & MCP Integration
