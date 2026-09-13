@@ -1,0 +1,29 @@
+Question 47
+Incorrect
+SCENARIO: You are building a structured data extraction system using Claude. The system extracts information from unstructured documents, validates the output using JavaScript Object Notation (JSON) schemas, and maintains high accuracy. It must handle edge cases gracefully and integrate with downstream systems.
+
+QUESTION: The coordinator delegates each document to an extraction subagent with a fixed script: locate the header, read the summary table, then extract line items. Documents with nonstandard layouts consistently fail. How should the delegation prompts be redesigned?
+
+Your answer is incorrect
+Extend the delegation script with additional branching instructions that explicitly cover each newly encountered nonstandard layout variation.
+Explanation
+This is incorrect because enumerating layouts is an unwinnable arms race: real-world documents will keep producing variations the script does not anticipate. Each new branch also makes the prompt longer and harder to follow, without ever removing the underlying brittleness.
+Correct answer
+Specify the extraction goal and what a schema-valid result must contain, letting the subagent choose how to work through each document.
+Explanation
+This is correct because it defines success (the goal and quality criteria, including a complete, schema-valid result) while leaving the method to the subagent, which can adapt its navigation to whatever layout it encounters. Anthropic's prompting guidance favors describing the outcome and giving the model a way to verify its work rather than prescribing steps when order is not essential.
+Have subagents return nonstandard documents to the coordinator, which composes a tailored step sequence for each one individually.
+Explanation
+This is incorrect because it turns every unusual document into a coordinator round trip, adding latency and moving the adaptability to the wrong place. The subagent processing the document is the component positioned to adapt; the coordinator should define success, not author bespoke procedures per document.
+Send only the document and the target schema name, omitting quality criteria so nothing constrains the subagent's chosen approach.
+Explanation
+This is incorrect because removing quality criteria discards the definition of a successful result along with the rigid script. Without stated criteria such as schema validity and field completeness, the subagent has no way to judge whether its extraction is done or adequate.
+Overall explanation
+This question tests the core principle of coordinator prompt design: define success, not procedure. In a coordinator-subagent architecture, each subagent runs in its own isolated context and does not automatically inherit the coordinator's conversation history or prior tool results. A subagent may carry its own configured instructions, such as the system prompt in its AgentDefinition, but the task-specific content (the research or extraction goal, needed context, and quality criteria) must be included in the delegated prompt itself. If that delegated task is written as a rigid procedural script, the subagent's ability to reason about the document in front of it is wasted, because it is forced down a path written before the document was ever seen. The reason to use an agent for extraction at all, rather than a deterministic parser, is that documents vary; the delegation prompt should preserve that adaptability by stating the goal (extract these fields from this document) and the quality criteria (output validates against the JSON schema, required fields are populated, values are grounded in the source text), then letting the subagent decide how to navigate headers, tables, and unusual layouts.
+
+Anthropic's prompting guidance makes this explicit: describe the outcome rather than the steps, give the model a way to check its own work, and reserve rigid numbered sequences for cases where order or completeness genuinely matters. Quality criteria act as the subagent's self-verification target, which is what makes the goal-oriented prompt reliable rather than merely permissive; dropping the criteria entirely, as one option does, removes the definition of done and invites incomplete or unvalidated output. Expanding the script to cover more layouts just deepens the brittleness, and routing odd documents back to the coordinator for custom scripts relocates the same procedural rigidity while adding round trips.
+
+See Subagents in the SDK for what subagents inherit and why delegated prompts must carry task-specific context, and the Claude Code prompt guidance on describing outcomes and measurable targets instead of step-by-step procedures.
+
+Domain
+Agentic Architecture & Orchestration
