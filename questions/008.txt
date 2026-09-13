@@ -1,0 +1,23 @@
+Question 39Incorrect
+ 
+SCENARIO: You are building a multi-agent research system using the Claude Agent SDK. A coordinator agent delegates to specialized subagents: one searches the web, one analyzes documents, one synthesizes findings, and one generates reports. The system researches topics and produces comprehensive, cited reports.
+ 
+QUESTION: During a research run, the coordinator decomposes a topic into five independent web search subtopics. Trace logs show the coordinator invokes the web search subagent for the first subtopic, waits for its result, then issues the next invocation in a subsequent turn, repeating until all five complete. End-to-end research time is roughly five times the duration of a single search. What change would most effectively reduce this latency?
+Migrate the searchers to an agent team so they can message each other directly instead of routing through the coordinator.
+Explanation
+Agent teams are an experimental feature designed for work that benefits from inter-agent communication, and they carry higher token cost and coordination overhead. Independent searches need no messaging between agents, so this migration adds capabilities the workload does not use when the documented parallel subagent fan-out already fits the need.
+Your answer is incorrect
+Raise the CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS environment variable so more search subagents are allowed to run at once.
+Explanation
+The default concurrent subagent limit is 20, well above the five searches in this workload, so the limit is not what forces sequential execution. The bottleneck is the coordinator spawning one subagent per turn, which no concurrency ceiling adjustment will change.
+Correct answer
+Have the coordinator emit all five Agent tool calls in a single response so the independent search subagents execute concurrently.
+Explanation
+When subtasks are independent, the coordinator can issue multiple Agent tool calls in one response, and the subagents run in parallel. The total time then approaches the duration of the slowest search rather than the sum of all five, directly addressing the observed sequential bottleneck.
+Combine all five subtopics into a single delegation prompt so one web search subagent handles the entire research pass.
+Explanation
+Consolidating the work into one subagent forgoes the documented benefit of parallel fan-out, where independent subtasks run concurrently in separate isolated contexts. It also accumulates all five searches' results in a single context window, increasing the risk of context pressure and diluted attention during synthesis.
+Overall explanation
+<p>In a coordinator-subagent architecture, latency for independent subtasks is determined by <i>how the coordinator dispatches work</i>, not by how fast any single subagent runs. The Claude Agent SDK supports <b>parallel subagent execution</b>: when the coordinator emits multiple Agent tool calls in a single assistant response, the runtime executes those subagents concurrently, each in its own isolated context. Independent subtasks then finish in roughly the time of the slowest one instead of the sum of all of them. The sequential pattern in the logs, one spawn per turn with a wait in between, is a dispatch behavior the coordinator can be designed or prompted out of whenever the subtasks have no dependencies on each other's results.</p><p>The other approaches misdiagnose the bottleneck. The concurrent subagent limit defaults to 20, so five searches never approach it; raising it changes nothing when the coordinator only ever has one subagent in flight. Agent teams are documented for a different problem: direct inter-agent messaging and shared task coordination across multiple Claude Code instances, at higher token cost as an experimental feature; independent searches gain nothing from that messaging capability that parallel Agent tool calls do not already provide more simply. Collapsing the subtopics into one subagent gives up the fan-out pattern's concurrency and its isolated context windows, packing all five searches' results into a single crowded context.</p><p>The useful mental model: the coordinator is the scheduler. Sequential spawning is appropriate when each subtask depends on the previous result (a pipeline); parallel spawning is appropriate when subtasks are independent (fan-out, then synthesize). See <a href="https://code.claude.com/docs/en/agent-sdk/subagents">Subagents in the SDK</a> for parallelization and context isolation, and <a href="https://code.claude.com/docs/en/agent-teams">Agent teams</a> for how teams differ from within-session subagents.</p>
+Domain
+Domain 1: Agentic Architecture & Orchestration

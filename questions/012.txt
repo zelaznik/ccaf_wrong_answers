@@ -1,0 +1,23 @@
+Question 52Incorrect
+ 
+SCENARIO: You are building a multi-agent research system using the Claude Agent SDK. A coordinator agent delegates to specialized subagents: one searches the web, one analyzes documents, one synthesizes findings, and one generates reports. The system researches topics and produces comprehensive, cited reports.
+ 
+QUESTION: During validation of the system's output, you find that final reports contain plausible-looking citation URLs that do not match the pages the web search subagent actually retrieved. Trace logs show that at each handoff, the coordinator passes the downstream subagent a prose summary of the upstream findings, and these summaries contain no source URLs or document identifiers. What change would most effectively ensure the final reports cite the actual sources?
+Correct answer
+Have subagents return findings in a structured format pairing each claim with its source metadata, which the coordinator includes in each delegation prompt.
+Explanation
+Subagents start with fresh, isolated context, so the only provenance the report generator can use is what arrives in its delegation prompt. A structured claim-source mapping carried through every handoff preserves the actual URLs and document identifiers end to end, removing the need for the model to invent citations.
+Strengthen the report subagent's system prompt with an explicit instruction to cite only sources that were actually consulted during the research phase.
+Explanation
+The report subagent never received any source URLs, so it has no way to comply with this instruction regardless of how strongly it is worded. Prompt instructions cannot restore information that was stripped out of the context before the subagent was spawned.
+Reconfigure the pipeline so the web search subagent hands its results directly to the report subagent instead of routing them through the coordinator.
+Explanation
+In the coordinator-subagent pattern, each subagent works in isolation and returns its final message to the parent; the coordinator is responsible for routing information between workers. Attempting direct handoffs abandons the hub-and-spoke design without addressing the real problem, which is that the summaries being passed strip out source metadata.
+Your answer is incorrect
+Grant the report-generation subagent access to a web search tool so it can look up and attach a matching source URL for each claim before finalizing the report.
+Explanation
+Re-searching for sources at report time does not recover which pages the search subagent actually retrieved; it may surface different pages or fail to find the originals. This adds latency and cost while leaving the provenance chain broken, since the actual sources were discarded upstream.
+Overall explanation
+<p>The root cause here is a combination of <b>context isolation</b> and <b>lossy handoffs</b>. In the Claude Agent SDK, each subagent runs in its own fresh conversation: the only information it receives from the parent is the prompt string in the Agent tool call, and the only thing it returns is its final message. When the coordinator condenses upstream findings into prose summaries, the source URLs are silently dropped, and by the time the report generator is asked to produce citations, the real provenance no longer exists anywhere in its context. A language model asked to cite sources it never saw will produce plausible-looking but fabricated references.</p><p>The reliable fix is a <b>claim-source mapping</b> that travels through every handoff: each subagent returns findings in a structured format (for example, JSON pairing each claim with its URL, document name, or page reference), and the coordinator includes that structured data verbatim in each downstream delegation prompt. Separating content from metadata this way means summarization can compress the narrative without destroying provenance. This is the general mental model for multi-agent orchestration: <i>if information is not explicitly placed in a subagent's prompt, it does not exist for that subagent</i>.</p><p>The other approaches fail for structural reasons. Re-searching at report time cannot recover which pages were actually consulted and may retrieve entirely different sources. Prompt instructions to cite honestly cannot conjure data that was stripped upstream. And bypassing the coordinator abandons the hub-and-spoke pattern, in which subagents report only to the parent, while still leaving the lossy summaries in place. See <a href="https://code.claude.com/docs/en/agent-sdk/subagents">Subagents in the SDK</a> for how subagent context isolation and result passing work.</p>
+Domain
+Domain 1: Agentic Architecture & Orchestration
