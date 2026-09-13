@@ -1,0 +1,29 @@
+Question 2Incorrect
+
+SCENARIO: You are integrating Claude Code into your Continuous Integration/Continuous Deployment (CI/CD) pipeline. The system runs automated code reviews, generates test cases, and provides feedback on pull requests. You need to design prompts that provide actionable feedback and minimize false positives.
+
+QUESTION: The team is deciding how to decompose several automated jobs in the pipeline. Which two actions correctly apply a fixed prompt-chaining decomposition rather than dynamic adaptive decomposition? (Choose two.)
+Your selection is incorrect
+Use fixed prompt chaining for diagnosing an intermittent build failure where each finding determines which logs, configs, or files to examine next.
+Explanation
+This is an open-ended investigation where the next step depends on what the previous step revealed, which is the defining case for dynamic adaptive decomposition. A fixed script written before the evidence exists would frequently run irrelevant steps or miss the actual cause.
+Correct selection
+Use fixed prompt chaining for a pull request review that always checks the same aspects, running per-file passes followed by a cross-file integration pass.
+Explanation
+This workflow has a predictable, repeating structure known before any work begins, which is exactly what fixed prompt chaining is designed for. Per-file passes followed by an integration pass give consistent depth and reproducible results on every PR.
+Your selection is correct
+Use fixed prompt chaining for a nightly documentation audit that follows a set sequence: extract public APIs, compare against published docs, list mismatches.
+Explanation
+Every step of this audit is known in advance and does not change based on intermediate findings, so a fixed sequential pipeline provides stability and reproducibility. Dynamic decomposition would add adaptivity overhead to a task with no uncertainty.
+Use fixed prompt chaining for investigating an unexplained coverage regression whose scope and relevant modules only become clear as evidence accumulates.
+Explanation
+Because the scope is unknown up front and emerges from intermediate results, this task requires the agent to generate subtasks dynamically as it learns. Committing to a fixed pipeline here would lock the investigation into steps chosen before anything was discovered.
+Overall explanation
+
+The decision rule for task decomposition turns on one question: is the full sequence of steps knowable before any work begins? Prompt chaining (a fixed sequential pipeline) fits workflows whose structure repeats predictably, such as a code review that always evaluates the same aspects or an audit that always runs extract, compare, report. Fixing the steps buys reproducibility: every run follows the same path, results are comparable across PRs, and each individual step can be regression-tested and improved in isolation. In CI, where the same job runs hundreds of times, that determinism is exactly what you want.
+
+Dynamic adaptive decomposition exists for the opposite profile: open-ended investigations where each finding reshapes what to do next. Diagnosing an intermittent build failure or an unexplained coverage regression cannot be scripted in advance, because the relevant logs, configs, and modules are only discovered mid-investigation. Forcing such work through a fixed pipeline means either an ever-growing script that tries to pre-enumerate every contingency, or an investigation that follows steps written before the evidence existed. The mental model an architect should carry: predictability of structure decides the pattern; fixed pipelines for predictable multi-aspect work, adaptive plans where the path emerges from intermediate results.
+
+For the fixed-pipeline pattern, see Anthropic's guidance on chaining prompts and the broader discussion of workflow versus agent patterns in Building effective agents.
+Domain
+Agentic Architecture & Orchestration
