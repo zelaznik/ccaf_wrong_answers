@@ -1,0 +1,29 @@
+Question 6
+Incorrect
+SCENARIO: You are building a structured data extraction system using Claude. The system extracts information from unstructured documents, validates the output using JavaScript Object Notation (JSON) schemas, and maintains high accuracy. It must handle edge cases gracefully and integrate with downstream systems.
+
+QUESTION: The team's /extract-record skill declares an argument-hint listing the expected document path and schema name. Engineers still occasionally pass a schema name that does not exist, and the extraction fails downstream. What is the correct fix?
+
+Set allowed-tools in the SKILL.md frontmatter so the skill can only reach schemas that are registered in the project configuration.
+Explanation
+The allowed-tools field restricts which tools a skill may invoke during execution; it does not constrain or validate the arguments passed to the skill. A wrong schema name would still flow into the skill unchanged.
+Your answer is incorrect
+Rewrite the argument-hint to enumerate every valid schema name so invocations passing an unknown name are rejected before the skill runs.
+Explanation
+This misattributes enforcement power to argument-hint. Even if the hint listed every valid schema, it would remain informational; nothing in the hint mechanism inspects or rejects the values an engineer actually supplies.
+Enable context: fork in the frontmatter so an invalid schema name fails inside an isolated subagent rather than the main session.
+Explanation
+The context: fork option isolates a skill's verbose output from the main conversation. It changes where the failure happens, not whether it happens; the bad schema name still produces a failed extraction.
+Correct answer
+Keep the hint as guidance and add a schema-name validation step to the skill's instructions, since argument-hint only displays expected arguments.
+Explanation
+This is correct because argument-hint is display metadata: it shows engineers what arguments the skill expects but performs no checking of the values actually supplied. Catching a nonexistent schema name requires a validation step in the skill's own procedure or in surrounding code.
+Overall explanation
+A useful mental model for SKILL.md frontmatter is to separate its fields into two families. Some fields are display metadata that shape how a skill is discovered and invoked: the description tells Claude when the skill applies, and argument-hint shows developers what arguments the skill expects at invocation time. Other fields are execution controls that actually constrain what happens when the skill runs: allowed-tools bounds which tools the skill may call, and context: fork isolates its work in a subagent. Nothing in the display family enforces anything; nothing in the execution family validates argument values.
+
+That is why the failure here persists. argument-hint improves the odds that an engineer supplies the right arguments, but it never inspects what was typed, so a plausible-looking yet nonexistent schema name sails through. Validation of argument values has to live where behavior is defined: instruct the skill to verify the schema name against the project's registered schemas before extracting, and fail with a clear message when it does not resolve. For guarantees stronger than instructions, the same check can run in code, for example as a hook, but the essential correction is recognizing that a hint is not a gate.
+
+The distractors each stretch a real frontmatter field past its documented boundary: enumerating schemas in the hint still rejects nothing, allowed-tools governs tool access rather than argument content, and context: fork relocates a failure without preventing it. See Agent Skills and Slash commands for the frontmatter reference.
+
+Domain
+Claude Code Configuration & Workflows
