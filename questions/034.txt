@@ -1,0 +1,29 @@
+Question 14
+Incorrect
+SCENARIO: You are building a customer support resolution agent using the Claude Agent SDK. The agent handles high-ambiguity requests like returns, billing disputes, and account issues. It has access to your backend systems through custom Model Context Protocol (MCP) tools (get_customer, lookup_order, process_refund, escalate_to_human). Your target is 80%+ first-contact resolution while knowing when to escalate.
+
+QUESTION: process_refund rejects a request with isError: true, errorCategory: "business", retriable: false, and the message "Order 8841 is outside the 30-day returns window; no automatic refund is possible." What should the agent do next in the conversation?
+
+Your answer is incorrect
+Invoke escalate_to_human immediately with the error details, since the refund cannot be completed autonomously.
+Explanation
+A clear, well-explained policy refusal is within the agent's scope to communicate; escalation triggers are explicit customer requests, policy gaps, or inability to make progress. Handing off silently before the customer has even heard the reason adds load to human agents and hurts first-contact resolution.
+Correct answer
+Relay the returns-window explanation to the customer and offer escalation if they want an exception reviewed.
+Explanation
+This is the behavior the error was designed to enable. A business error with retriable: false and a customer-friendly message tells the agent the refusal is final at the tool level, so the correct move is to explain the policy to the customer and surface the remaining path forward, which preserves first-contact resolution.
+Retry process_refund once with slightly adjusted request parameters in case the returns-window check produced a false rejection.
+Explanation
+The retriable: false flag exists precisely to prevent this. A policy violation is not an input problem; no reformulation of the parameters will move the order back inside the returns window, so retrying wastes a turn and a tool call.
+Tell the customer a temporary system issue blocked the refund and suggest they contact support again later.
+Explanation
+This misrepresents a deliberate policy refusal as a transient failure, which is exactly the confusion the errorCategory field eliminates. It also invites the customer to retry a request that will always be refused, guaranteeing a repeat contact.
+Overall explanation
+Structured error metadata is a two-sided contract: the tool author encodes the decision, and the agent must act on it correctly. The errorCategory tells the agent what kind of failure occurred, and for a business error the pairing of retriable: false with a plain-language message means: do not attempt the call again, and use this text to inform the customer. The agent's job at that point is conversational, not operational; it relays the policy reason and presents whatever legitimate paths remain, such as offering to escalate if the customer wants an exception considered.
+
+It is worth understanding what the flag actually is. retriable is not a field Anthropic's platform enforces; the documented protocol-level signal is is_error on the tool result (or isError in MCP-style results). Fields like errorCategory and retriable are application-level metadata carried inside the result content, and they work because the model reads them and reasons about them. That is why the accompanying message matters so much: Anthropic's guidance on handling tool calls explicitly recommends error messages that state what went wrong and what to do next, rather than terse failures the model must guess about.
+
+The wrong moves each break the contract in a different way. Retrying a non-retryable business refusal treats a policy decision as noise and can never succeed. Reporting the refusal as a temporary system issue is worse than unhelpful: it converts accurate information into misinformation and sets the customer up for a futile second contact. Escalating immediately, without first explaining the outcome, skips the communication step the error message was written to support; escalation belongs where policy is ambiguous, the customer asks for a human, or the agent genuinely cannot proceed, none of which applies to a clearly explained refusal.
+
+Domain
+Tool Design & MCP Integration
