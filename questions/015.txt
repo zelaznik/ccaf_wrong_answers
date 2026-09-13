@@ -1,0 +1,23 @@
+Question 31Incorrect
+Scenario: Developer Productivity with Claude You are building developer productivity tools using the Claude Agent SDK. The agent helps engineers explore unfamiliar codebases, understand legacy systems, generate boilerplate code, and automate repetitive tasks. It uses built-in tools (Read, Write, Bash, Grep, Glob) and integrates with MCP servers. Your CI job already invokes Claude Code successfully and posts a single pull request summary comment. The team now wants automated inline comments for each finding, but the integration frequently breaks because Claude sometimes adds prose, changes field names, or formats findings as markdown. What change best supports reliable automation?
+Your answer is incorrect
+Strengthen the review prompt to demand valid JSON only, then reject responses containing markdown or explanatory text.
+Explanation
+Prompt instructions can improve formatting but do not provide the same enforcement as structured CLI output with a schema. Rejecting malformed responses also creates avoidable CI failures instead of preventing inconsistent output at the interface boundary.
+Correct answer
+Run Claude Code with --output-format json and --json-schema, then map validated findings to inline PR comments.
+Explanation
+This directly addresses the reliability problem by making Claude Code produce structured output that downstream automation can parse consistently. A JSON schema defines the expected fields, reducing brittle dependencies on prose, markdown formatting, or field naming variations.
+Store the prior summary comment and ask Claude to rewrite it into comment-ready records on a second pass.
+Explanation
+A second pass may sometimes normalize output, but it still relies on model behavior rather than a schema-backed output contract. It also adds latency and can lose information if the original summary omitted details needed for inline comments.
+Parse Claude's markdown bullets with regular expressions, adding patterns as new review formats appear in CI logs.
+Explanation
+Parsing natural language or markdown with regular expressions is a brittle automation anti-pattern. It couples the CI integration to presentation details that can change across responses, causing ongoing maintenance and missed findings.
+Overall explanation
+Reliable CI automation needs structured contracts. When Claude Code output feeds another system, such as an inline pull request comment publisher, the integration should not depend on prose conventions or markdown layout. Using `--output-format json` with `--json-schema` gives the pipeline a predictable structure to validate and transform into review comments.
+Prompt-only formatting is weaker. Asking for JSON in natural language can reduce errors, but it does not provide the same machine-oriented boundary as schema-constrained CLI output. Rejecting responses after the fact shifts the problem into CI failure handling rather than designing the interface correctly.
+Brittle parsing is an anti-pattern. Regular expressions over markdown bullets or conversational summaries are fragile because the model may change phrasing, ordering, or formatting while still giving a useful review. A second normalization pass can help in some workflows, but it adds cost and latency while remaining less reliable than producing structured output at the source.
+Learn more about Claude Code automation options in the [Claude Code CLI](https://docs.anthropic.com/en/docs/agents-and-tools/claude-code/cli-usage) documentation and general structured tool patterns in [Tool Use](https://docs.anthropic.com/en/docs/build-with-claude/tool-use).
+Domain
+Claude Code Configuration & Workflows

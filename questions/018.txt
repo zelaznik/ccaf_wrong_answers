@@ -1,0 +1,23 @@
+Question 51Incorrect
+Scenario: Structured Data Extraction You are building a structured data extraction system using Claude. The system extracts information from unstructured documents, validates output using JSON schemas, and maintains high accuracy. It must handle edge cases gracefully and integrate with downstream systems. During evaluation, the extraction pipeline handles supplier contracts by first asking Claude to infer document-specific extraction rules, then asking the same conversation to review the resulting field values. Human auditors find that the review step often misses subtle errors introduced by the inferred rules, such as treating renewal notice dates as contract end dates. You need to improve review effectiveness without changing the extraction schema. What architecture should you use?
+Run three self-review turns in the original conversation and accept fields only when all turns report high confidence.
+Explanation
+Repeated self-review turns in the same conversation still share the original context and may repeat the same blind spots. Self-reported confidence is not a reliable proxy for correctness unless calibrated separately against labeled validation data.
+Correct answer
+Run a separate Claude review instance with the source document, extracted fields, and rubric, excluding the original extraction reasoning.
+Explanation
+A separate review instance avoids carrying over the assumptions and reasoning that produced the original extraction. This makes the reviewer more likely to question subtle field placement errors and compare the extraction directly against the source and rubric.
+Ask the same conversation to self-critique its extraction using extended thinking and a stricter instruction to find mistakes.
+Explanation
+Self-review in the same session is less effective because the model retains the reasoning context that led to the original decision. A stricter instruction may help somewhat, but it does not remove the anchoring effect from the generation context.
+Your answer is incorrect
+Append the extraction rationale to the review prompt so Claude can verify whether each reasoning step was internally consistent.
+Explanation
+Reviewing the original rationale can reinforce the same mistaken assumptions that caused the extraction error. The goal is to independently compare extracted values to the source and rubric, not validate whether the original reasoning sounded coherent.
+Overall explanation
+Independent review instances are more effective when the concern is that the same reasoning context that generated an extraction also influences its review. Providing a separate Claude instance with only the source document, extracted fields, and an explicit review rubric creates a cleaner evaluation setup that can challenge assumptions rather than inherit them.
+The underlying principle is context isolation: a reviewer should not be anchored by the generator's intermediate rationale when checking whether values are supported by the source. This is especially important for subtle semantic errors, such as confusing a renewal notice date with a contract end date, where the extraction may be schema-valid but substantively wrong.
+Asking the same conversation to self-critique, adding more thinking, or repeating self-review turns does not remove the original assumptions. Appending the extraction rationale can make the problem worse by encouraging the reviewer to assess internal consistency rather than source-grounded correctness. Confidence scores can support routing when calibrated with labeled validation sets, but they should not replace an independent review architecture.
+For further learning, see Anthropic guidance on structured outputs and tool use in [Tool Use](https://docs.anthropic.com/en/docs/build-with-claude/tool-use), and broader prompt design guidance in [Prompt Engineering](https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering).
+Domain
+Prompt Engineering & Structured Output

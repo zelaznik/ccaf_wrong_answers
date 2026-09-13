@@ -1,0 +1,23 @@
+Question 54Incorrect
+Scenario: Structured Data Extraction You are building a structured data extraction system using Claude. The system extracts information from unstructured documents, validates output using JSON schemas, and maintains high accuracy. It must handle edge cases gracefully and integrate with downstream systems. A coordinator splits each document into sections and sends them to extraction subagents for fields such as parties, dates, totals, and obligations. During testing, one subagent sometimes loses access to a section-level source system for a few minutes. The current implementation either returns an empty section extraction marked as successful or aborts the entire document extraction, causing downstream systems to misinterpret the document state. What should you change?
+Correct answer
+Have subagents report unresolved failures with attempted section, failure type, partial fields, and recovery suggestions for coordinator handling.
+Explanation
+This preserves valid work while making unresolved failures visible to the coordinator and downstream review logic. It enables targeted retry, alternate processing, or human review without falsely claiming completeness or discarding successful extractions.
+Your answer is incorrect
+Retry the failed section until it succeeds, withholding all partial extractions from downstream systems until completion.
+Explanation
+Retries can be useful for transient failures, but unbounded retry behavior can block processing indefinitely and hide partial progress. The coordinator still needs structured context about what failed, what was attempted, and what valid data is available.
+Terminate the entire document workflow whenever any subagent cannot access its assigned source section.
+Explanation
+This throws away successfully extracted fields from other sections even when the failure is localized and potentially recoverable. It also prevents the coordinator from making informed decisions using partial results and targeted recovery paths.
+Return an empty extraction object for the failed section so downstream validators can treat missing fields consistently.
+Explanation
+This silently suppresses the access failure by making it look like the section was processed successfully and contained no data. Downstream validators cannot distinguish a valid empty result from an unavailable source, which can create false confidence.
+Overall explanation
+Reliable multi-agent extraction requires preserving both successful work and unresolved failure context. When a subagent cannot process one section, it should return enough structured information for the coordinator to decide whether to retry, use an alternate path, proceed with coverage gaps, or route only the affected portion to human review.
+The key principle is to distinguish valid empty results from access or processing failures. An empty extraction can mean the source contained no matching data, while an access failure means the system does not know whether data was present. Treating both as success creates false completeness for downstream systems.
+Aborting the entire document on a single localized failure is also an anti-pattern because it discards useful partial results and prevents more granular recovery. Blindly retrying until success is similarly risky because it can stall workflows and obscure the current state of the extraction.
+For further learning, see the Anthropic documentation on [Agent SDK](https://docs.anthropic.com/en/docs/agents-and-tools/agent-sdk) and [Tool Use](https://docs.anthropic.com/en/docs/build-with-claude/tool-use).
+Domain
+Context Management & Reliability

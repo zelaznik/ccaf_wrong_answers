@@ -1,0 +1,23 @@
+Question 41Incorrect
+Scenario: Multi-Agent Research System You are building a multi-agent research system using the Claude Agent SDK. A coordinator agent delegates to specialized subagents: one searches the web, one analyzes documents, one synthesizes findings, and one generates reports. The system researches topics and produces comprehensive, cited reports. Your coordinator's document-analysis subagent depends on an internal library-catalog MCP server. It works in your local Claude Code session, but two teammates who cloned the repository cannot access the catalog tools, so their runs fall back to weaker web searches. Separately, one researcher is testing an experimental notes server that should not affect the team. What should you change?
+Your answer is incorrect
+Document per-user claude mcp add commands in README, and ask each researcher to recreate both servers locally.
+Explanation
+Manual per-user setup is an anti-pattern for tooling required by a shared workflow because it depends on every teammate configuring the same server correctly. It also mixes the personal experimental server into the team setup, which violates the stated need to keep it isolated.
+Correct answer
+Move the required catalog server into project-scoped .mcp.json, and keep the experimental notes server in user-scoped ~/.claude.json.
+Explanation
+Shared MCP servers required for team workflows should live in project scope so they travel with the repository. Personal or experimental servers belong in user scope so they do not affect teammates or create inconsistent shared behavior.
+Combine the catalog and notes integrations into one MCP server, and expose only role-specific tools to subagents.
+Explanation
+Tool scoping can reduce misuse by subagents, but it does not solve the configuration distribution problem. Combining a required team integration with a personal experiment also increases coupling and risks exposing experimental capabilities to the whole workflow.
+Place both servers in each user's ~/.claude.json, and rely on onboarding scripts to synchronize changes across machines.
+Explanation
+User-scoped configuration is appropriate for personal tools, not shared project dependencies. Synchronizing user configuration through onboarding scripts is brittle and can still leave teammates with different tool availability across sessions or machines.
+Overall explanation
+Shared MCP configuration should be placed at the project level when the tools are required for a team workflow. A project-scoped `.mcp.json` travels with the repository, which makes the coordinator and subagents see the same required MCP server after teammates clone or pull the project.
+User-scoped configuration, such as `~/.claude.json`, is the right place for personal or experimental MCP servers. This prevents one researcher's prototype integration from changing the tool environment for everyone else.
+Asking every teammate to recreate shared servers manually is a reliability anti-pattern because configuration drift will produce inconsistent agent behavior. Combining unrelated required and experimental integrations does not address scope, and role-specific tool exposure is a separate design concern from how MCP servers are distributed across a team.
+The underlying principle is to match configuration scope to the intended audience: project scope for shared team capabilities, user scope for individual tools. Learn more from the [Claude Code Overview](https://docs.anthropic.com/en/docs/agents-and-tools/claude-code/overview) and the [MCP Overview](https://modelcontextprotocol.io/introduction).
+Domain
+Tool Design & MCP Integration

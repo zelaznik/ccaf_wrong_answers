@@ -1,0 +1,22 @@
+Question 17Incorrect
+Scenario: Customer Support Resolution Agent You are building a customer support resolution agent using the Claude Agent SDK. The agent handles high-ambiguity requests like returns, billing disputes, and account issues. It has access to backend systems through MCP tools (get_customer, lookup_order, process_refund, escalate_to_human). Your target is 80%+ first-contact resolution while knowing when to escalate. Production logs show misdirected refunds and privacy disclosures when users provide common names and partial addresses. In these cases, get_customer returns several plausible profiles, and the agent chooses one using recent order activity or name similarity. What change best improves reliability without unnecessarily routing routine cases to humans?
+Your answer is incorrect
+Escalate every request with duplicate customer records to a human agent before performing any lookup_order calls.
+Explanation
+Escalating every duplicate-match case would reduce automation unnecessarily, since many customers can provide additional identifiers in the conversation. Human escalation should be reserved for explicit requests, policy gaps, or cases where meaningful progress cannot be made.
+Correct answer
+Treat multiple customer matches as unresolved identity and request a disambiguating identifier before any order or refund operations.
+Explanation
+Multiple plausible customer records represent an ambiguity that the agent cannot safely resolve from heuristics alone. Requesting a disambiguating identifier, such as an email address, order number, or phone suffix, prevents account mixups while still allowing the agent to resolve the case autonomously once identity is clear.
+Call lookup_order for each matching customer profile, then select the account whose order details best match the message.
+Explanation
+Looking up orders across multiple plausible profiles can expose unrelated customer information to the model and does not solve identity ambiguity. Selecting the best match from order details is still a heuristic choice rather than a reliable clarification process.
+Rank matching customers by recent activity and continue with the highest ranked profile when confidence exceeds a threshold.
+Explanation
+This relies on heuristic selection, which is unsafe when several customer records are plausible. A confidence threshold does not create reliable identity verification and can still lead to privacy disclosures or incorrect refunds.
+Overall explanation
+Correct ambiguity handling treats multiple plausible customer records as an unresolved identity problem, not as a ranking problem. The agent should ask the customer for a disambiguating identifier before accessing order details or taking account actions, which protects privacy and reduces incorrect refunds while preserving first-contact resolution when the customer can clarify.
+The underlying reliability principle is to distinguish recoverable ambiguity from cases requiring escalation. Duplicate matches are often recoverable through clarification, so immediate human escalation lowers automation without being necessary. Heuristic selection based on recency, similarity, or self-reported confidence is an anti-pattern because it can make a wrong account look deceptively likely.
+Calling downstream tools for every possible match also increases privacy risk and can contaminate the conversation with unrelated customer data. A safer workflow limits sensitive operations until identity is unique enough to proceed, then continues with the normal resolution path. Learn more about tool-driven agent workflows in [Tool Use](https://docs.anthropic.com/en/docs/build-with-claude/tool-use) and MCP integration patterns in [MCP Tools](https://modelcontextprotocol.io/docs/concepts/tools).
+Domain
+Context Management & Reliability

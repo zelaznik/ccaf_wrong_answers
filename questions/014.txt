@@ -1,0 +1,23 @@
+Question 26Incorrect
+Scenario: Customer Support Resolution Agent You are building a customer support resolution agent using the Claude Agent SDK. The agent handles high-ambiguity requests like returns, billing disputes, and account issues. It has access to backend systems through MCP tools (get_customer, lookup_order, process_refund, escalate_to_human). Your target is 80%+ first-contact resolution while knowing when to escalate. A customer starts a chat with: "I don't want to go through a bot. Put me through to a person about order 8421." The message includes enough details that your normal automation would probably resolve the delayed-shipment issue in one or two tool calls. You are tuning the escalation policy and want to avoid both unnecessary deflection and unnecessary automation. What should the agent do next?
+Correct answer
+Call escalate_to_human with the order context and brief summary, without attempting autonomous lookup or replacement processing first.
+Explanation
+An explicit request for a human should be honored without requiring the customer to participate in automated troubleshooting first. A concise handoff preserves context for the human agent while respecting the customer's stated preference.
+Your answer is incorrect
+Acknowledge the request, run lookup_order to confirm eligibility, then offer the replacement before considering escalation.
+Explanation
+This optimizes for first-contact resolution at the expense of the customer's explicit preference. Even if the case is straightforward, attempting autonomous resolution first can feel like deflection and violates the escalation boundary.
+Ask the customer to explain why human help is needed, then continue autonomously if the reason seems resolvable.
+Explanation
+Requiring justification adds friction and risks overriding a clear customer preference. The agent can include the customer's stated issue in the handoff without interrogating them or continuing autonomously.
+Use sentiment analysis on the message, escalating only when the customer appears highly frustrated or hostile.
+Explanation
+Sentiment is an unreliable proxy for whether escalation is appropriate. The customer has already made a clear request, so routing should not depend on inferred emotional intensity.
+Overall explanation
+Explicit customer preference is a hard escalation signal. When a customer directly asks for a human agent, the support agent should use `escalate_to_human` and provide a concise handoff rather than first attempting tool-based resolution.
+The tradeoff is between maximizing first-contact resolution and maintaining trust. If the customer only expresses frustration but does not request a person, it can be appropriate to acknowledge the frustration and offer help for a straightforward issue. When the customer clearly asks for a human, continuing automation becomes a deflection pattern.
+Using sentiment as the deciding factor is an anti-pattern because frustration level does not reliably indicate case complexity or customer preference. Asking the customer to justify the request also adds unnecessary friction and can worsen the experience.
+For implementation guidance on tool-based agent flows and tool result handling, see [Tool Use](https://docs.anthropic.com/en/docs/build-with-claude/tool-use) and [Agent SDK](https://docs.anthropic.com/en/docs/agents-and-tools/agent-sdk).
+Domain
+Context Management & Reliability

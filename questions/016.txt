@@ -1,0 +1,23 @@
+Question 32Incorrect
+Scenario: Developer Productivity with Claude You are building developer productivity tools using the Claude Agent SDK. The agent helps engineers explore unfamiliar codebases, understand legacy systems, generate boilerplate code, and automate repetitive tasks. It uses built-in tools (Read, Write, Bash, Grep, Glob) and integrates with MCP servers. During a legacy payment module analysis, the coordinator first assigns one subagent to map database tables and another to trace API callers. Both return useful findings. The coordinator then invokes a planning subagent to propose a migration strategy, but the plan ignores the database constraints and caller list already discovered, recommending changes that would break known integrations. What should you change to make this orchestration more reliable?
+Allow subagents to message each other directly so the planning subagent can request missing analysis details.
+Explanation
+Direct subagent-to-subagent communication reduces coordinator observability and makes error handling and information routing harder to control. The coordinator should remain the hub for routing findings, managing dependencies, and deciding what context each subagent receives.
+Correct answer
+Have the coordinator maintain shared investigation state and include relevant prior findings in each subsequent subagent prompt.
+Explanation
+This addresses the reliability issue by making the coordinator responsible for carrying forward cross-agent state. Each subagent invocation should receive the information it needs for its assigned task, rather than relying on hidden shared memory or prior conversation context.
+Your answer is incorrect
+Replace the specialized subagents with one long-running generalist subagent that performs discovery and planning together.
+Explanation
+A single generalist subagent may avoid handoff issues, but it sacrifices the benefits of specialization and can accumulate excessive context during large codebase exploration. The better fix is improving coordination and state passing, not abandoning the coordinator-subagent pattern.
+Instruct the planning subagent to infer missing dependencies from file names when prior findings are unavailable.
+Explanation
+Inferring missing dependencies from file names is an anti-pattern because it encourages unsupported assumptions about code behavior. For migration planning, the subagent needs actual findings from prior analysis, including callers and database constraints, not guesses.
+Overall explanation
+Coordinator-owned state is central to reliable multi-agent orchestration. In a coordinator-subagent pattern, the coordinator decomposes work, collects results, and decides which findings must be supplied to later subagents so they can produce grounded outputs.
+The underlying principle is that subagents operate in isolated task contexts. They should not be designed as if they can automatically see prior coordinator conversations or other subagents' outputs. The coordinator should maintain a structured investigation state, such as discovered tables, caller lists, constraints, open questions, and confidence notes, then include the relevant subset in each downstream prompt.
+Letting subagents communicate directly weakens the hub-and-spoke architecture by hiding information flow from the coordinator. Replacing specialists with one generalist can create context bloat and reduce the value of parallel specialized analysis. Asking a planning subagent to infer missing dependencies from file names is especially risky because it substitutes guesses for evidence.
+For more on agent orchestration and subagent patterns, see the [Agent SDK](https://docs.anthropic.com/en/docs/agents-and-tools/agent-sdk) documentation and the [Claude Code Sub-agents](https://docs.anthropic.com/en/docs/agents-and-tools/claude-code/sub-agents) documentation.
+Domain
+Agentic Architecture & Orchestration
