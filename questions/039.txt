@@ -1,0 +1,30 @@
+Question 31
+Incorrect
+SCENARIO: You are building a structured data extraction system using Claude. The system extracts information from unstructured documents, validates the output using JavaScript Object Notation (JSON) schemas, and maintains high accuracy. It must handle edge cases gracefully and integrate with downstream systems.
+
+QUESTION: During extraction, Claude returns stop_reason "tool_use" with two tool_use blocks requesting different document lookups. Which two statements correctly describe how the results must be returned in the next request? (Select TWO.)
+
+Correct selection
+Place both tool_result blocks inside a single user-role message, since the Messages API has no dedicated tool role.
+Explanation
+This is correct. Tool results are integrated into the standard message structure: assistant messages carry tool_use blocks and user messages carry tool_result blocks. There is no separate tool or function role, so both results travel back as content of a user message.
+Send each result as a separate assistant-role message so the model treats the outputs as part of its own prior turn.
+Explanation
+This is incorrect. Tool results are not assistant content; they represent information supplied back to the model by the application. Placing them in assistant messages misrepresents the conversation structure and violates the API's expected role pattern.
+Your selection is incorrect
+Order the tool_result blocks to match the order of the tool_use blocks, since the API pairs results with requests by position.
+Explanation
+This is incorrect. Results are matched to requests through the tool_use_id field, not by position in the content array. Relying on ordering instead of explicit IDs is a misunderstanding of how the pairing mechanism works.
+Your selection is correct
+Set each tool_result block's tool_use_id to the id of the tool_use block it answers, so each result pairs with its request.
+Explanation
+This is correct. Every tool_use block carries a unique id, and the corresponding tool_result must reference that id in its tool_use_id field. This linkage is what lets the model reliably associate each output with the specific call it made, especially when several tools run in one turn.
+Overall explanation
+Client-side tool use in the Messages API is a two-request loop. When Claude decides it needs a tool, it ends its turn with stop_reason: "tool_use" and one or more tool_use content blocks, each carrying a unique id, the tool name, and the input arguments. The API never executes anything itself; your harness runs the tools and sends the outputs back so the model can continue reasoning.
+
+Two structural rules govern that return trip. First, tool outputs go back as tool_result content blocks inside a user-role message: unlike some other LLM APIs, Claude's Messages API has no dedicated tool or function role, so tooling is woven into the existing alternating user/assistant structure. Second, each tool_result must set tool_use_id to the id of the tool_use block it answers. This explicit linkage is what makes parallel tool calls safe: when the model requests two lookups in one turn, the IDs, not the ordering of blocks, tell it which output belongs to which request. When multiple results are returned, they belong in a single user message rather than being spread across turns.
+
+The mental model to hold is that the growing message history is the model's only memory. The assistant message containing the tool_use blocks and the user message containing the matching tool_result blocks must both appear in the next request, because the model re-reads the full transcript on every inference pass. Sending results as assistant messages, or depending on positional order for pairing, breaks the contract the API defines. See Tool use overview and Handle tool calls for the documented message structure.
+
+Domain
+Agentic Architecture & Orchestration
