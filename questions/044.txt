@@ -1,0 +1,29 @@
+Question 4Incorrect
+
+SCENARIO: You are building a customer support resolution agent using the Claude Agent SDK. The agent handles high-ambiguity requests like returns, billing disputes, and account issues. It has access to your backend systems through custom Model Context Protocol (MCP) tools (get_customer, lookup_order, process_refund, escalate_to_human). Your target is 80%+ first-contact resolution while knowing when to escalate.
+
+QUESTION: A long dispute-investigation session from yesterday analyzed a dozen orders. Overnight, a billing correction updated the records for two of those orders; nothing else changed. Which two actions correctly continue the investigation? (Select two.)
+Your selection is correct
+After resuming, direct the agent to re-query only the two corrected orders and keep the remaining validated tool results as current context.
+Explanation
+Targeted re-query refreshes only the records that actually changed while preserving the bulk of the investigation's still-valid context. This avoids the cost of full re-exploration when most prior analysis remains accurate.
+Correct selection
+Resume the saved session and explicitly name the two corrected order records, since sessions store conversation history, not backend state.
+Explanation
+A saved session is a transcript of prompts, tool calls, tool results, and responses; resuming replays yesterday's evidence exactly as recorded. Because nothing re-validates old tool results on resume, the agent will not know two orders changed unless the update is stated explicitly, which lets it correct exactly the stale entries.
+Your selection is incorrect
+Start a new session seeded with a structured summary of yesterday's conclusions, then re-query the backend for every order in the dispute.
+Explanation
+Starting fresh with an injected summary is the right pattern when most prior tool results have gone stale, such as after a sweeping migration. Here only two records changed, so discarding the session re-pays the entire investigation cost and loses detailed evidence that is still valid.
+Resume the saved session as-is and let the agent notice the corrected records automatically the next time it touches those orders in the backend.
+Explanation
+Resuming performs no re-validation of prior tool results; the recorded order data re-enters context as if it were still current. The agent may never re-query those two orders and would keep reasoning from stale figures.
+Overall explanation
+
+The mental model that decides this situation is what a session actually is. In the Claude Agent SDK, a session is a persisted conversation history: the prompts, tool calls, tool results, and responses, written to disk so work can be picked up later. The documentation is explicit that sessions persist the conversation, not the filesystem or backend state. Resuming is therefore a replay of what the agent saw, not a snapshot of what the world currently looks like. See Agent SDK sessions.
+
+This has two practical consequences. First, nothing re-validates old tool results on resume: a lookup_order response captured yesterday re-enters context exactly as recorded, and the model treats it as current fact. Second, the decision between resuming and starting fresh turns on how much of that recorded evidence is still valid. When only a bounded, known set of records changed, the efficient move is to resume, explicitly name what changed, and direct the agent to re-fetch just those records; the rest of the investigation's context, including verified identity, root-cause reasoning, and unaffected order data, continues to earn its keep. Only when a sweeping change invalidates most stored tool results does the reliable move flip to a fresh session seeded with a structured summary.
+
+The distractors fail on the same underlying mechanism. Starting a new session here discards a mostly valid investigation and forces the agent to rediscover everything for the sake of two records; it is the right tool for the wrong situation. Resuming as-is assumes an automatic staleness check that does not exist: the agent has no signal that two entries in its transcript no longer match the backend and may never re-touch them. The architect's job is to match the recovery strategy to the scope of the drift, and for a two-record correction that means informing the resumed session and re-analyzing only what changed.
+Domain
+Agentic Architecture & Orchestration
