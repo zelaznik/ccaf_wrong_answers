@@ -1,0 +1,29 @@
+Question 1Incorrect
+
+SCENARIO: You are building a multi-agent research system using the Claude Agent SDK. A coordinator agent delegates to specialized subagents: one searches the web, one analyzes documents, one synthesizes findings, and one generates reports. The system researches topics and produces comprehensive, cited reports.
+
+QUESTION: The team wants to move its weekly re-analysis of the archived document corpus to the Message Batches API, with the synthesized report due Monday mornings. Which TWO design decisions are correct? (Select TWO.)
+Correct selection
+Map each result back to its source document using the custom_id assigned at submission, since results can arrive out of input order.
+Explanation
+Batch results are not guaranteed to come back in submission order, so positional matching is unreliable. The custom_id field on each request is the documented mechanism for correlating every result with the document that produced it.
+Have the synthesis subagent consume results incrementally as each document's analysis streams back before the whole batch completes.
+Explanation
+The Message Batches API does not stream individual results as they finish; results become accessible when all requests in the batch complete or after 24 hours, and are retrieved as a results file. A synthesis stage cannot be designed around per-document incremental delivery.
+Your selection is correct
+Submit the batch at least 24 hours before the Monday deadline, since processing carries no latency guarantee inside the 24-hour window.
+Explanation
+Batches can take up to 24 hours to complete and Anthropic provides no latency SLA, so meeting a hard deadline requires backing the submission time off by the full processing window. This is the documented way to plan batch cadence against a delivery commitment.
+Your selection is incorrect
+Schedule submission for overnight low-traffic hours, when batches are documented to finish within one hour, so a morning deadline is safe.
+Explanation
+Although most batches finish in under an hour, Anthropic documents no completion guarantee at any time of day; a batch may take up to 24 hours regardless of when it is submitted. Planning a same-morning deadline around a one-hour assumption risks missing the report entirely.
+Overall explanation
+
+A weekly corpus re-analysis is exactly the profile the Message Batches API is designed for: a large volume of independent requests, no one waiting on an immediate answer, and a 50% cost reduction as the reward for tolerating asynchrony. The tradeoff the API makes is explicit: you give up any latency guarantee (most batches finish in under an hour, but the documented bound is up to 24 hours, after which unfinished work expires) in exchange for the discount. That asymmetry drives the two design decisions here.
+
+First, deadline planning must assume the worst-case window. If the report is due Monday at 09:00, the batch must be submitted no later than Sunday at 09:00; anything tighter is betting the deadline on typical rather than guaranteed behavior. Submitting during quiet hours does not change this: there is no documented time-of-day completion guarantee. Second, correlation must be explicit. Batch results can return out of input order, so each request's custom_id is the designed mechanism for mapping an analysis back to its source document, and it also enables resubmitting only the requests that failed rather than the whole corpus.
+
+The incremental-consumption design fails because batches are not a stream: results are retrieved as a single .jsonl file once the batch reaches its processing_status: "ended" state (or the 24-hour limit passes), and clients poll for that state rather than receiving per-request pushes. A downstream synthesis stage should therefore be triggered on batch completion, not woven into partial delivery. See Batch processing for the documented latency behavior, result handling, and custom_id semantics.
+Domain
+Prompt Engineering & Structured Output
