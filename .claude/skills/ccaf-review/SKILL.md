@@ -5,8 +5,9 @@ description: >-
   Use when the user pastes a wrong-answer review that has a SCENARIO, a question,
   a list of answer options, and markers like "Correct answer" / "Your answer is
   incorrect" / "Explanation" / "Overall explanation" / "Domain". Also use when the
-  user invokes /ccaf-review. First show only the de-biased, reshuffled question and
-  options; grade and explain only after the user answers.
+  user invokes /ccaf-review. Archive the raw paste to the next questions/NNN.txt file,
+  then show only the de-biased, reshuffled question and options; grade and explain only
+  after the user answers.
 ---
 
 # CCAF Wrong-Answer Review
@@ -30,6 +31,23 @@ The pasted text is a raw copy from a test-review page and is messy. Expect:
 - `Domain` — the exam domain, e.g. `Domain 3: Claude Code Configuration & Workflows`. Note it for the reveal.
 
 When parsing, separate the four pieces per option: (1) the answer text, (2) its per-option explanation, (3) whether it's the correct answer, (4) whether it was the user's original pick. You need #1 for phase 1 and #1–#3 (plus overall explanation) for phase 2.
+
+## Phase 0 — archive the raw prompt (do this first)
+
+Before parsing or answering anything, save the user's pasted question verbatim to the
+`questions/` directory in the project root.
+
+1. Find the highest-numbered existing `questions/NNN.txt` (three digits), e.g. with
+   `ls questions/[0-9][0-9][0-9].txt | sort | tail -1`.
+2. The new file is that number + 1, zero-padded to three digits.
+3. Write the **raw, unmodified** pasted text — including the `Question NN Incorrect`
+   header, `Correct answer` markers, `Your answer is incorrect`, explanations, HTML
+   tags, and `Domain` line — into that file. Do not clean it up, reorder it, or strip
+   anything; the file is the archive of the original.
+4. Don't echo the file contents back — that would leak the correct answer. Go straight
+   into the Phase 1 output.
+
+Skip this step only if the user invoked the skill with no question text yet (see Phase 1).
 
 ## Phase 1 — present the de-biased question
 
