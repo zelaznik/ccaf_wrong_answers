@@ -1,0 +1,31 @@
+Question 59Incorrect
+
+SCENARIO: You are integrating Claude Code into your Continuous Integration/Continuous Deployment (CI/CD) pipeline. The system runs automated code reviews, generates test cases, and provides feedback on pull requests. You need to design prompts that provide actionable feedback and minimize false positives.
+
+QUESTION: The MCP tool query_code_index returns cross-repository symbol references with coverage data, yet the review agent keeps choosing Grep instead. Its current description is "Searches code." Which TWO changes most directly fix this? (Select TWO.)
+Your selection is correct
+Document the tool's input formats and expected output, with example queries showing the searches it should handle.
+Explanation
+Descriptions are the primary mechanism the model uses to select tools, and a two-word description leaves the tool's territory undefined. Input formats, output contracts, and example queries make the tool's applicability concrete so the model can match review tasks to it reliably.
+Your selection is incorrect
+Keep the tool description brief and state the routing guidance in the pipeline's system prompt, where the agent reads it every run.
+Explanation
+Tool descriptions are what the model consults at selection time, so moving the guidance elsewhere weakens the signal where it matters most. System prompt wording can also create unintended associations with tools rather than reliably steering selection.
+Correct selection
+Highlight the concrete advantages built-in search cannot provide, such as cross-repository symbol resolution and coverage data.
+Explanation
+Agents tend to prefer familiar built-in tools when an MCP tool's description gives no reason to choose otherwise. Explicitly naming the unique data and capabilities that Grep cannot match gives the model a selection signal at exactly the moment it decides which tool to call.
+Remove Grep from the review agent's allowed tools so indexed search becomes the only way to locate code references.
+Explanation
+This forces the choice rather than fixing the selection signal, and it breaks legitimate uses of Grep such as scanning the checked-out pull request for local patterns. The tool is being underused because its description is empty, not because the alternative exists.
+Overall explanation
+
+When a Claude Code agent has both built-in tools and MCP tools with overlapping purposes, it will often default to the built-in tool it knows well, especially when the MCP tool's description gives it nothing to weigh. The tool description is the primary selection mechanism: the model reads descriptions, not implementations, when deciding which tool fits a task. A description like "Searches code" is functionally indistinguishable from what Grep already does, so from the model's perspective there is no reason to prefer the indexed tool.
+
+The fix is to make the description carry the decision. First, state the concrete advantages the MCP tool has over built-in alternatives: cross-repository symbol resolution and attached coverage data are capabilities Grep, which searches only the local checkout's file contents, cannot replicate. Second, document input formats, output shape, and example queries so the model can recognize which review tasks map onto the tool. Together these give the model both a reason to select the tool and a clear picture of when it applies.
+
+Removing Grep entirely is a blunt architectural move that solves a description problem by deleting capability; the agent still needs local content search for tasks like scanning a pull request diff, and constraining inventory does not teach the model when the indexed tool is appropriate. Relocating the guidance to the system prompt moves the signal away from where selection happens; guidance embedded in the tool definition travels with the tool and is evaluated at the moment of choice, while system prompt wording can even create unintended tool associations.
+
+See Anthropic's tool use implementation guidance for description best practices and MCP tools for how servers expose tool definitions to clients.
+Domain
+Tool Design & MCP Integration
