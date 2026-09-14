@@ -1,0 +1,28 @@
+Question 43Incorrect
+
+SCENARIO: You are building developer productivity tools using the Claude Agent SDK. The agent helps engineers explore unfamiliar codebases, understand legacy systems, generate boilerplate code, and automate repetitive tasks. It uses the built-in tools (Read, Write, Bash, Grep, Glob) and integrates with Model Context Protocol (MCP) servers.
+
+QUESTION: Midway through an open-ended task to add tests across a legacy module, the agent discovers that many target files are build-generated from templates, invalidating part of its prioritized plan. What should the workflow do next?
+Abort the run and restart with a longer upfront mapping phase so the initial plan accounts for build-generated files this time.
+Explanation
+Open-ended tasks cannot be fully mapped in advance; surprises like generated files are exactly why dynamic decomposition exists. Restarting discards valid completed work and still cannot guarantee the next mapping pass anticipates every condition.
+Finish executing the original plan as written, then schedule a second cleanup pass to repair any work performed against generated files.
+Explanation
+Continuing a plan that a discovery has invalidated treats an adaptive investigation like a fixed pipeline. Work written against generated files will be overwritten at the next build, so this approach knowingly spends effort that must be redone.
+Your answer is incorrect
+Pause and escalate to an engineer, since encountering conditions the initial plan did not anticipate signals the task exceeds agent scope.
+Explanation
+Deviations from an initial plan are expected in adaptive workflows, not evidence the task is beyond the agent. Escalating on every unanticipated finding removes the adaptability that justifies using an agent for open-ended work in the first place.
+Correct answer
+Regenerate the remaining subtasks based on the discovery, redirecting test work to the template sources rather than the generated files.
+Explanation
+This is the defining behavior of dynamic adaptive decomposition: subtasks are produced and revised based on intermediate findings, not locked in after the initial mapping pass. The discovery that files are generated changes what work is meaningful, so the plan should adapt immediately and target the templates.
+Overall explanation
+
+Fixed pipelines and adaptive decomposition differ in where the plan lives. In prompt chaining, the sequence of steps is defined in code before the run starts, which works when a task decomposes cleanly into known subtasks. In dynamic adaptive decomposition, the model itself generates subtasks, and critically, it keeps regenerating them as intermediate results arrive. The plan is a living artifact: map the terrain, prioritize, act, and fold each discovery back into the remaining work. Anthropic's guidance draws exactly this line between workflows, which follow predefined code paths, and agents, which dynamically direct their own process based on what tool results reveal.
+
+Discovering that target files are build-generated is a canonical mid-run finding: it does not mean the task failed or the mapping was negligent, it means the environment supplied ground truth the agent could not have known before reading the code. The correct response is to fold that fact into the plan, retargeting effort at the template sources. Completing the original plan wastes work on files the build will overwrite; restarting with a bigger upfront mapping phase misunderstands why adaptive decomposition is used at all, since legacy codebases reliably hide conditions no single mapping pass will catch; and escalating on every plan deviation converts routine adaptation into human toil, eroding the productivity gain the agent exists to provide. Escalation belongs to genuine blockers, such as policy gaps or decisions with irreversible impact, not to ordinary discoveries.
+
+The mental model: choose the fixed chain when you can write the steps down before running anything, and choose adaptive decomposition when the next step depends on what the last one revealed. Then let it actually adapt. See Anthropic's Building Effective Agents for the workflow-versus-agent framework and the orchestration patterns behind it.
+Domain
+Agentic Architecture & Orchestration
