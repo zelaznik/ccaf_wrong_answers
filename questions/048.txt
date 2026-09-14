@@ -1,0 +1,28 @@
+Question 18Incorrect
+
+SCENARIO: You are building developer productivity tools using the Claude Agent SDK. The agent helps engineers explore unfamiliar codebases, understand legacy systems, generate boilerplate code, and automate repetitive tasks. It uses the built-in tools (Read, Write, Bash, Grep, Glob) and integrates with Model Context Protocol (MCP) servers.
+
+QUESTION: The agent renames legacy database columns to your new API field scheme. Its prompt contains a prose casing rule plus several correctly formatted sample field names, yet acronyms and mixed-case legacy names still convert inconsistently. Which prompt change is most effective?
+Your answer is incorrect
+Instruct the agent to pause and ask a clarifying question whenever it encounters a name it considers ambiguous.
+Explanation
+Incorrect. The interview pattern is valuable for surfacing unknown design considerations, but the desired mapping here is already fully known to the team. Turning a deterministic transformation into a series of clarification round-trips adds latency without teaching the pattern.
+Extend the prose rule with an exhaustive written enumeration of every casing edge case in the legacy schema.
+Explanation
+Incorrect. The scenario already shows that prose descriptions of the rule are being interpreted inconsistently; making the prose longer multiplies the text the model must interpret without removing the ambiguity. Concrete demonstrations communicate transformations more reliably than expanded natural-language rules.
+Add IMPORTANT emphasis to the casing rule and instruct the agent to apply the naming convention strictly to every column.
+Explanation
+Incorrect. Emphasis raises the priority of an instruction relative to other instructions, but it does not resolve what the instruction means for inputs the prose never disambiguates. The failures come from an underspecified rule, not from the rule being ignored.
+Correct answer
+Replace the output-only samples with two or three input/output pairs covering the acronym and mixed-case names.
+Explanation
+Correct. Output-only samples show what good results look like but not how a tricky input maps to its result. Paired input/output examples that include the exact ambiguous forms demonstrate the transformation itself, which is what the model needs to apply the rule consistently.
+Overall explanation
+
+When a transformation is described in prose and the results come out inconsistent, the underlying problem is usually that natural language underspecifies the mapping: the model must guess how the rule applies to inputs the description never explicitly covers, and it guesses differently each time. Concrete input/output examples close that gap because they demonstrate the transformation directly. Two or three pairs are typically enough, provided they are chosen deliberately: the highest-value examples are the ones covering exactly the cases that currently fail, such as acronyms and mixed-case identifiers in a renaming task.
+
+The distinction that decides this question is between samples of desired output and paired demonstrations of the mapping. A list of correctly formatted field names tells the model what the destination looks like but nothing about how a given legacy name travels there; an Input: HTTP_url -> Output: httpUrl pair encodes the decision itself. This is why few-shot pairs outperform both longer prose (more text to interpret, same ambiguity) and emphasis markers like IMPORTANT (which raise an instruction's priority but cannot disambiguate it). The interview pattern, where Claude asks clarifying questions, belongs to a different problem: surfacing design considerations the developer has not yet decided, not executing a mapping the team already knows.
+
+See Use examples (multishot prompting) and the broader Prompt engineering overview for guidance on selecting examples that cover edge cases rather than only typical inputs.
+Domain
+Claude Code Configuration & Workflows
