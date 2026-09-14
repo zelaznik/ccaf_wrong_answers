@@ -1,0 +1,28 @@
+Question 28Incorrect
+
+SCENARIO: You are building a multi-agent research system using the Claude Agent SDK. A coordinator agent delegates to specialized subagents: one searches the web, one analyzes documents, one synthesizes findings, and one generates reports. The system researches topics and produces comprehensive, cited reports.
+
+QUESTION: A scheduled CI job kicks off a headless research report with claude -p, but runs still stall because the invocation configures an MCP permission prompt tool that no host answers in CI. What change lets the job complete unattended?
+Your answer is incorrect
+Add --output-format json so the run emits machine-readable results instead of pausing for approval input.
+Explanation
+The output format only controls how results are serialized once the run produces them. It has no effect on the permission flow, so the run still waits on the unanswered permission host.
+Correct answer
+Add --permission-prompts none so the run skips the permission host and denies any action that would have prompted.
+Explanation
+This flag tells Claude Code not to consult or wait on a configured permission host, so the run never blocks on an approval nobody will give. Actions that would have required a prompt are denied instead of hanging, letting the job finish deterministically.
+Drop the -p flag so the session's interactive interface can surface and resolve the approval prompts.
+Explanation
+Removing -p starts an interactive session, which is exactly what a CI job cannot support: there is no human at the terminal to respond. The job would hang on interactive input instead of on the permission host.
+Pipe a continuous stream of yes responses into the process's standard input so every approval request is answered automatically.
+Explanation
+Permission requests routed to a permission prompt tool are answered by that host, not by reading the process's standard input. Piping text into stdin does not satisfy the approval flow, and blanket auto-approval would be an unsafe pattern even if it worked.
+Overall explanation
+
+The -p (--print) flag makes Claude Code run non-interactively, but it is not by itself a complete unattended-execution strategy. Permission handling is a separate layer: when an invocation configures a permission host, such as an MCP --permission-prompt-tool or an Agent SDK canUseTool callback, any tool call that needs approval is routed to that host, and the run waits for its answer. In CI there is nothing behind that host to respond, so the run stalls even though the session itself is headless.
+
+The flag --permission-prompts none exists for exactly this situation: it tells Claude Code not to consult or wait on the permission host at all, and any promptable action that cannot be resolved another way is denied rather than left pending. That trades some capability (denied actions) for a guarantee the pipeline actually values: the job always terminates. Note the flag requires a recent Claude Code version (v2.1.259 or later). The right mental model is a layered pipeline setup: -p handles the interactivity of the session, tool pre-approval flags such as --allowedTools handle which calls never prompt, and --permission-prompts none handles what happens to anything that would still prompt.
+
+The other approaches fail because they target the wrong layer. Piping affirmative text into stdin never reaches a permission host, since approvals do not flow through standard input. Changing the output format only affects result serialization, not the approval flow. Removing -p makes matters worse by reintroducing an interactive session in an environment with no human to drive it. See Headless mode and the CLI reference for the full unattended-run configuration.
+Domain
+Claude Code Configuration & Workflows
