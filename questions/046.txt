@@ -1,0 +1,28 @@
+Question 11Incorrect
+
+SCENARIO: You are integrating Claude Code into your Continuous Integration/Continuous Deployment (CI/CD) pipeline. The system runs automated code reviews, generates test cases, and provides feedback on pull requests. You need to design prompts that provide actionable feedback and minimize false positives.
+
+QUESTION: The system extracts benchmark timings from PR descriptions into a schema. Authors write durations in diverse informal notations, and your enumerated normalization rules keep missing new variants, so the field returns null. What best handles notations you have not seen yet?
+Correct answer
+Add few-shot examples mapping informal timing phrases to normalized extractions, letting the model generalize to unseen notations.
+Explanation
+This is correct because few-shot examples demonstrate the extraction-and-normalization pattern rather than enumerating specific string forms. The model generalizes the demonstrated pattern to notations not shown in the examples, which is exactly the failure mode rule lists cannot cover.
+Your answer is incorrect
+Make the timing field required and non-nullable in the JSON schema so a null extraction is rejected as invalid.
+Explanation
+This is incorrect because constraining the schema does not teach the model how to interpret unfamiliar notations; it only removes the honest way to report failure. Forcing a non-null value when the model cannot parse the notation encourages fabricated timings, which is worse than a detectable null.
+Add a regex post-processing step that parses timing strings from the raw text whenever the extraction returns null.
+Explanation
+This is incorrect because a regex fallback has the same enumeration problem as the rule list: it only matches patterns you anticipated. It patches symptoms downstream instead of improving the extraction itself, and it will silently miss the same novel notations.
+Expand the prompt's normalization rule list to exhaustively enumerate every timing notation observed across the pipeline's historical runs.
+Explanation
+This is incorrect because the failure is precisely that new variants keep appearing; a rule list can only cover notations already seen. Informal, author-written phrasing is too diverse for rule-based enumeration to stay ahead of, so nulls would continue on the next unseen variant.
+Overall explanation
+
+This situation is a textbook case for few-shot prompting over rule enumeration. Prose rules and regexes are extensional: they cover exactly the string forms their author has already seen. Informal, human-written values (durations, quantities, dates written in free text) are effectively open-ended, so any enumerated list is permanently behind the data. Few-shot examples work differently: by showing a handful of varied phrases paired with their correctly normalized extractions, they demonstrate the judgment being applied, and the model generalizes that pattern to notations it has never seen rather than merely repeating the examples. This is why few-shot prompting is the documented remedy when detailed instructions alone keep producing inconsistent or empty extractions from documents with varied structures.
+
+The mental model worth keeping: schemas and field constraints govern the shape of the output, not the model's ability to interpret the source. Making the field required and non-nullable does not add interpretive skill; it removes null as an honest answer and invites fabricated values, the same failure that makes nullable fields a best practice when information may be absent. Likewise, a regex fallback relocates the enumeration problem to post-processing without fixing extraction quality. Pair a small set of relevant, diverse examples (3-5 covering genuinely different notations) with any normalization conventions you do want stated (for example, always emit seconds as an integer), so the examples carry the generalization and the prompt pins the output convention.
+
+See Use examples (multishot prompting) to guide Claude's behavior and Structured outputs for schema design and structured extraction guidance.
+Domain
+Prompt Engineering & Structured Output
