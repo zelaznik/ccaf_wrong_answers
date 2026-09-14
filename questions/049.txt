@@ -1,0 +1,29 @@
+Question 25Incorrect
+
+SCENARIO: You are building a customer support resolution agent using the Claude Agent SDK. The agent handles high-ambiguity requests like returns, billing disputes, and account issues. It has access to your backend systems through custom Model Context Protocol (MCP) tools (get_customer, lookup_order, process_refund, escalate_to_human). Your target is 80%+ first-contact resolution while knowing when to escalate.
+
+QUESTION: While iterating on the agent's prompt and tool handling, testing surfaces several defect pairs. Which actions correctly apply the batching rule for presenting issues to Claude? (Select two.)
+Correct selection
+Present the escalation threshold and the refund approval check together in one message, since both misread the same policy clause and correcting one changes what the other must do.
+Explanation
+These two defects interact: both stem from one misread policy clause, and a fix to either alters the correct behavior of the other. Interacting issues must be presented together so Claude can produce one coherent change that satisfies both constraints at once.
+Your selection is correct
+Give Claude the lookup_order output format and the process_refund input parsing in a single message, since they disagree on order ID structure and fixing either alone breaks the handoff.
+Explanation
+These defects are coupled through a shared contract: the order ID format must change on both sides simultaneously or the handoff between the tools breaks. Presenting them in one message lets Claude reconcile the two sides in a single consistent fix.
+Combine the typo in the agent's greeting template and the incorrect currency symbol in refund confirmations into one message, since both are quick text fixes in customer-facing output.
+Explanation
+These are independent cosmetic fixes with no shared logic, so fixing one has no effect on the other. Independent issues are better handled sequentially, where each fix can be applied and verified in isolation without diluting attention across unrelated changes.
+Your selection is incorrect
+Batch the verbose logging statement in one tool wrapper with the stale docstring in another into a single message, since combining them saves iteration turns even though the files are unrelated.
+Explanation
+Saving turns is not the criterion for batching; interdependence is. These changes touch unrelated files with no interaction between them, so sequential handling keeps each fix simple to verify and avoids mixing unrelated edits in one diff.
+Overall explanation
+
+The decision rule for feeding issues to Claude is interdependence, not convenience. When defects interact, meaning a fix to one changes what a correct fix to the other looks like, they must arrive in a single message. Given only one issue at a time, Claude optimizes locally: it corrects the escalation threshold without knowing the refund approval check reads the same policy clause, or changes lookup_order's output format without adjusting process_refund's parsing, and each fix silently invalidates or conflicts with the next. Presenting the coupled issues together lets the model reason about the shared constraint (one policy interpretation, one order ID contract) and emit a single coherent change.
+
+Independent issues invert the tradeoff. A greeting typo and a currency symbol, or a logging statement and a stale docstring, share no logic, so nothing is gained by combining them, and something is lost: a batched prompt spreads attention across unrelated edits, produces a diff that is harder to review, and makes it harder to tell which change caused a regression. Sequential turns keep each fix small, verifiable in isolation, and easy to accept or roll back on its own.
+
+A useful mental model: batch by root cause and contract, not by count or file proximity. If two fixes must land together to leave the system consistent, they are one task; if either could ship alone without breaking anything, they are separate tasks. This mirrors broader iterative-refinement guidance for Claude Code: scope each request so the model can hold the full set of interacting constraints in view, and no more. See Claude Code Best Practices and the Claude Code documentation.
+Domain
+Claude Code Configuration & Workflows
