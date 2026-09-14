@@ -1,0 +1,28 @@
+Question 41Incorrect
+
+SCENARIO: You are building a multi-agent research system using the Claude Agent SDK. A coordinator agent delegates to specialized subagents: one searches the web, one analyzes documents, one synthesizes findings, and one generates reports. The system researches topics and produces comprehensive, cited reports.
+
+QUESTION: A multi-hour research run crashes after the web search and document analysis subagents complete but before synthesis starts. You want to resume without redoing finished work. Which recovery design should you implement?
+Your answer is incorrect
+Resume the coordinator under a named session with the resume flag, relying on the restored session context to make the completed subagents' outputs available to the synthesis agent.
+Explanation
+Session resumption restores conversational context for a single session, but it does not give the coordinator a reliable record of which phases completed or a structured store of subagent findings. Recovery that depends on whatever happened to be in the session at crash time is fragile compared to explicit state exports and a manifest.
+Configure each subagent to write its raw tool outputs in full to shared files, so on resume the synthesis agent can reconstruct all prior work by reading everything back into context.
+Explanation
+Dumping raw tool outputs preserves data but not usable state: the synthesis agent would ingest bulky search pages and analysis traces, bloating its context with content disproportionate to relevance. It also gives the coordinator no completion record, so it cannot decide what to skip versus rerun.
+Correct answer
+Have each subagent export structured state to a known location; on resume, the coordinator loads a manifest to identify completed phases and injects those findings into remaining agents' prompts.
+Explanation
+This is the structured state persistence pattern for crash recovery. Each agent writes its status and key findings to a known location, and a manifest tells the coordinator exactly which phases finished, so it can skip completed work and pass prior findings explicitly into the prompts of the agents that still need to run.
+Persist the coordinator's full conversation transcript to disk after every turn, then replay the entire message history on resume so all agents regain their prior working context.
+Explanation
+Subagents run with isolated context and do not read the coordinator's history, so replaying the coordinator transcript does not restore their state. It also reloads verbose intermediate output wholesale instead of the distilled findings the remaining agents actually need.
+Overall explanation
+
+Crash recovery in a coordinator-subagent system works because state is made explicit and structured rather than left implicit in conversation history. Each agent exports a state file to a known location containing its status, key findings, coverage, and gaps, and a small manifest records which phases are completed, in_progress, or not_started. On resume, the coordinator reads the manifest, skips finished phases, and injects the exported findings directly into the prompts of the agents that still need to run. This last step matters because subagents have isolated context: nothing exists for a subagent unless it is placed in its prompt, so recovery must deliver prior findings explicitly.
+
+The alternatives fail for reasons that reveal the same mental model. Replaying the coordinator's transcript restores a conversation, not agent state, and subagents never see that history anyway. Session resumption is designed for continuing interactive work, not for reconstructing a multi-phase pipeline; it carries no completion record and risks acting on stale context. Writing raw tool outputs in full trades one failure for another: the data survives, but the synthesis agent must swallow tens of thousands of tokens of unfiltered content, reproducing the context bloat that structured summaries exist to prevent.
+
+The design tradeoff is a small amount of discipline at each phase boundary (exporting a compact, structured summary) in exchange for cheap, deterministic recovery and cleaner handoffs even when nothing crashes. See Subagents in the Claude Agent SDK and Anthropic's engineering write-up on building a multi-agent research system, which discusses durable state and resumption in long-running agent workflows.
+Domain
+Context Management & Reliability
