@@ -1,0 +1,28 @@
+Question 50Incorrect
+
+SCENARIO: You are building a multi-agent research system using the Claude Agent SDK. A coordinator agent delegates to specialized subagents: one searches the web, one analyzes documents, one synthesizes findings, and one generates reports. The system researches topics and produces comprehensive, cited reports.
+
+QUESTION: The report-generation subagent must change the phrase "preliminary findings" to "validated findings" in exactly one section of a report file, but that phrase appears in four sections. How should the Edit call be constructed?
+Your answer is incorrect
+Skip Edit and call Write with only the corrected paragraph, letting Write locate the matching section and merge it in place.
+Explanation
+Write is a full-file operation that creates a file or completely overwrites an existing one with the provided content. It performs no locating or merging, so calling it with only a paragraph would destroy the rest of the report.
+Correct answer
+Provide an old_string that includes enough surrounding text from the target section to make the match unique in the file.
+Explanation
+Edit requires the old_string to match uniquely in the file by default. Expanding the old_string with adjacent lines or context from the intended section disambiguates the four occurrences and guarantees only the desired one changes. This is the documented way to target one instance of repeated text.
+Pass the phrase alone as the old_string, since Edit applies the replacement to the first occurrence it encounters.
+Explanation
+Edit does not fall back to the first occurrence; by default a non-unique old_string causes the edit to fail rather than silently pick one match. Relying on positional behavior that the tool does not have would leave the file unchanged and the call failed.
+Write the old_string as a regular expression anchored to the section heading so Edit matches only that section.
+Explanation
+Edit performs exact string matching, including whitespace and indentation; it does not interpret old_string as a regular expression. A regex pattern would be treated as literal text and would fail to match anything in the file.
+Overall explanation
+
+The Edit tool performs exact string replacement: it takes an old_string and a new_string, requires the old string to match the file contents exactly (including whitespace and indentation), and by default requires that match to be unique. This uniqueness rule is a deliberate safety design: an ambiguous match could change the wrong location, so the tool refuses to guess. When the text you want to change appears multiple times, the primary remedy is to extend old_string with enough surrounding context (adjacent lines, the section heading, distinctive nearby wording) so that exactly one match remains.
+
+The mental model worth holding is a clean division of labor: Edit makes precise, surgical changes anchored by unique text, while Write replaces a file's entire contents. Write never merges or appends; whatever content it receives becomes the entire file, which is why sending it a single paragraph would erase the rest of the report. And Edit is not a pattern engine; regular expressions passed as old_string are matched literally and simply fail. If a file's structure is so repetitive that no reasonable amount of context produces a unique anchor, one possible strategy is to read the full file and use Write to output the complete modified version, leaning on Write's overwrite semantics at the cost of rewriting everything.
+
+See the Claude Code tools reference for the documented behavior of Read, Write, and Edit.
+Domain
+Tool Design & MCP Integration
