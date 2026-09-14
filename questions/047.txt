@@ -1,0 +1,28 @@
+Question 15Incorrect
+
+SCENARIO: You are building a multi-agent research system using the Claude Agent SDK. A coordinator agent delegates to specialized subagents: one searches the web, one analyzes documents, one synthesizes findings, and one generates reports. The system researches topics and produces comprehensive, cited reports.
+
+QUESTION: A report-generation skill's SKILL.md declares allowed-tools: Write. Files are written without prompts on the invoking turn, but after the user's next message, Write calls prompt again. How should the team handle pre-approval on later turns?
+Correct answer
+Re-invoke the skill on each turn that writes report files, since the allowed-tools grant clears when the user sends the next message.
+Explanation
+This is correct. The pre-approval granted by allowed-tools applies only to the turn in which the skill runs; when the user sends the next message, the grant clears, so Write reverts to its normal permission behavior. Invoking the skill again re-applies the grant for that new turn.
+Keep the skill's instructions loaded in the conversation after execution so the permission grant stays active on follow-up turns.
+Explanation
+This is incorrect. Skill instructions can remain in the conversation context after the invoking turn, yet the permission grant still clears when the user sends the next message. The grant's lifetime is tied to the turn, not to whether the instructions are still in context.
+Your answer is incorrect
+Rewrite the allowed-tools field as a YAML list rather than a plain string, which makes the grant persist across subsequent turns.
+Explanation
+This is incorrect. The allowed-tools field accepts a space-separated string, a comma-separated string, or a YAML list, and all forms behave identically. No syntax makes the grant outlive the invoking turn; the turn scoping is inherent to the mechanism.
+Approve each Write prompt manually, since Write requires interactive confirmation on every call and cannot be pre-approved through frontmatter.
+Explanation
+This is incorrect. Write does require permission by default, but allowed-tools in skill frontmatter is exactly the mechanism that pre-approves it, which is why no prompts appeared on the invoking turn. The scenario itself demonstrates that pre-approval worked.
+Overall explanation
+
+The allowed-tools field in SKILL.md frontmatter is a turn-scoped pre-approval grant: it lets Claude use the listed tools without asking permission during the turn that invokes the skill, and nothing longer. When the user sends the next message, the grant clears, even though the skill's instructions may still be sitting in context. Invoking the skill again re-applies the grant for that new turn. This design keeps the elevated permission tightly bound to the moment the skill's workflow is actually running, rather than leaving a standing exemption in the session.
+
+It also helps to keep the mental model straight about what allowed-tools is and is not. It is not a restriction: tools you leave off the list remain callable under the session's normal permission settings, and it does not override deny or ask rules, which take precedence. If you need to remove tools while a skill is active, disallowed-tools is the field for that, and its restriction likewise clears on the next user message. Tools like Read, Grep, and Glob do not require permission by default, so listing them changes little; the grant matters most for tools like Write, Edit, and Bash that normally prompt.
+
+The distractors each misdirect the fix: Write can absolutely be pre-approved (the prompt-free first turn proves it), so falling back to manual approval gives up a working mechanism; the accepted syntaxes for allowed-tools (space-separated, comma-separated, or YAML list) are functionally equivalent, so switching forms changes nothing; and the grant's expiry is independent of whether the skill's instructions remain loaded, so keeping them in context does not extend it. See the Claude Code Skills documentation and the tools reference for the frontmatter behavior and which tools require permission.
+Domain
+Claude Code Configuration & Workflows
