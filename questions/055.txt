@@ -1,0 +1,28 @@
+Question 60Incorrect
+
+SCENARIO: You are integrating Claude Code into your Continuous Integration/Continuous Deployment (CI/CD) pipeline. The system runs automated code reviews, generates test cases, and provides feedback on pull requests. You need to design prompts that provide actionable feedback and minimize false positives.
+
+QUESTION: Each finding includes a numeric confidence field that a merge gate compares against a 0.7 threshold. Outputs always validate against the JSON schema, but values arrive on mixed scales: 0.85 in one run, 85 in the next. What is the most effective fix?
+Post-process each output by dividing any confidence value greater than 1 by 100 before the merge gate evaluates it.
+Explanation
+This heuristic patches the symptom without fixing the ambiguity: a genuine but miscalibrated value like 1.5, or a percentage like 0.9 meaning 90, would be silently mishandled. Repair logic downstream is fragile compared with telling the model the expected scale up front.
+Your answer is incorrect
+Add minimum: 0 and maximum: 1 constraints to the JSON schema so out-of-range values are rejected during generation.
+Explanation
+Structured outputs support only a subset of JSON Schema, and numerical constraints such as minimum and maximum are among the unsupported features; including them can produce a 400 error rather than enforce the range. The scale convention has to be communicated through prompt text and field descriptions instead.
+Correct answer
+State the scale (decimal fraction, 0.0 to 1.0) in the prompt and the field description, and range-check values in code.
+Explanation
+A schema can enforce that confidence is a number, but it cannot convey which scale the number should use. An explicit normalization rule in the prompt and field description tells the model the expected convention, and a client-side range check catches any remaining outliers. This addresses the ambiguity at its source rather than patching symptoms.
+Change the field to a string enum of low, medium, and high so the model cannot emit values on the wrong scale.
+Explanation
+Replacing the numeric field with coarse labels destroys the granularity the merge gate's 0.7 threshold depends on, forcing a redesign of the downstream contract. The problem is an unstated scale convention, not the numeric type itself.
+Overall explanation
+
+This failure sits exactly on the boundary between what a schema guarantees and what it cannot. A JSON schema with a number type ensures every extraction carries a syntactically valid numeric confidence value, but which scale that number uses (a 0 to 1 fraction versus a 0 to 100 percentage) is a semantic convention the schema has no way to express. Anthropic's Structured outputs documentation is explicit that only a subset of JSON Schema is supported: numerical constraints such as minimum and maximum are unsupported, and unsupported features can produce a 400 error. So even the natural-seeming schema-level fix is unavailable; the convention must travel through the prompt and the field's description.
+
+The right mental model is a layered one: constrained decoding pins down structure and types; prompt-level normalization rules pin down conventions (scales, units, date formats, canonical identifiers); and application code validates what neither layer can guarantee. The tool definition guidance makes the same point for format-sensitive parameters: detailed descriptions explaining meaning, behavior, and expected formats are what steer the model, and examples reinforce them. A statement like "confidence is a decimal fraction between 0.0 and 1.0, where 0.85 means 85% confident" gives the model an unambiguous convention to follow, and a cheap range check in the pipeline catches stragglers.
+
+The alternatives each miss a layer. Divide-by-100 post-processing guesses at intent and silently corrupts edge cases. Swapping the number for a low/medium/high enum removes the ambiguity by removing the signal: the merge gate's numeric threshold no longer has anything to compare. Only stating the convention where the model can read it, backed by validation, fixes the mixed-scale behavior without breaking the downstream contract.
+Domain
+Prompt Engineering & Structured Output
